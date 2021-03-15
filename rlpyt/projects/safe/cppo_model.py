@@ -1,39 +1,39 @@
-
 import numpy as np
 import torch
 
 from rlpyt.models.mlp import MlpModel
 from rlpyt.models.running_mean_std import RunningMeanStdModel
-from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.utils.collections import namedarraytuple
+from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
 ValueInfo = namedarraytuple("ValueInfo", ["value", "c_value"])
 RnnState = namedarraytuple("RnnState", ["h", "c"])
 
 
 class CppoModel(torch.nn.Module):
-
     def __init__(
-            self,
-            observation_shape,
-            action_size,
-            hidden_sizes=None,
-            lstm_size=None,
-            lstm_skip=True,
-            constraint=True,
-            hidden_nonlinearity="tanh",  # or "relu"
-            mu_nonlinearity="tanh",
-            init_log_std=0.,
-            normalize_observation=True,
-            var_clip=1e-6,
-            ):
+        self,
+        observation_shape,
+        action_size,
+        hidden_sizes=None,
+        lstm_size=None,
+        lstm_skip=True,
+        constraint=True,
+        hidden_nonlinearity="tanh",  # or "relu"
+        mu_nonlinearity="tanh",
+        init_log_std=0.0,
+        normalize_observation=True,
+        var_clip=1e-6,
+    ):
         super().__init__()
         if hidden_nonlinearity == "tanh":  # So these can be strings in config file.
             hidden_nonlinearity = torch.nn.Tanh
         elif hidden_nonlinearity == "relu":
             hidden_nonlinearity = torch.nn.ReLU
         else:
-            raise ValueError(f"Unrecognized hidden_nonlinearity string: {hidden_nonlinearity}")
+            raise ValueError(
+                f"Unrecognized hidden_nonlinearity string: {hidden_nonlinearity}"
+            )
         if mu_nonlinearity == "tanh":  # So these can be strings in config file.
             mu_nonlinearity = torch.nn.Tanh
         elif mu_nonlinearity == "relu":
@@ -64,8 +64,7 @@ class CppoModel(torch.nn.Module):
             self.constraint = torch.nn.Linear(last_size, 1)
         else:
             self.constraint = None
-        self.log_std = torch.nn.Parameter(init_log_std *
-            torch.ones(action_size))
+        self.log_std = torch.nn.Parameter(init_log_std * torch.ones(action_size))
         self._lstm_skip = lstm_skip
         if normalize_observation:
             self.obs_rms = RunningMeanStdModel(observation_shape)
@@ -78,13 +77,13 @@ class CppoModel(torch.nn.Module):
             obs_var = self.obs_rms.var
             if self.var_clip is not None:
                 obs_var = torch.clamp(obs_var, min=self.var_clip)
-            observation = torch.clamp((observation - self.obs_rms.mean) /
-                obs_var.sqrt(), -10, 10)
+            observation = torch.clamp(
+                (observation - self.obs_rms.mean) / obs_var.sqrt(), -10, 10
+            )
         fc_x = self.body(observation.view(T * B, -1))
         if self.lstm is not None:
             lstm_inputs = [fc_x, prev_action, prev_reward]
-            lstm_input = torch.cat([x.view(T, B, -1) for x in lstm_inputs],
-                dim=2)
+            lstm_input = torch.cat([x.view(T, B, -1) for x in lstm_inputs], dim=2)
             # lstm_input = torch.cat([
             #     fc_x.view(T, B, -1),
             #     prev_action.view(T, B, -1),

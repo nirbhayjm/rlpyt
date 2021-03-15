@@ -1,4 +1,3 @@
-
 """
 Launches multiple experiment runs and organizes them on the local
 compute resource.
@@ -21,7 +20,7 @@ variant levels constructed here.
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 # Either manually set the resources for the experiment:
 affinity_code = encode_affinity(

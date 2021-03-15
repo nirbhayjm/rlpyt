@@ -1,16 +1,20 @@
 import multiprocessing as mp
+
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
+
+from rlpyt.models.utils import strip_ddp_state_dict
+from rlpyt.utils.collections import namedarraytuple
+from rlpyt.utils.logging import logger
+from rlpyt.utils.quick_args import save__init__args
+from rlpyt.utils.synchronize import RWLock
+
 # from torch.nn.parallel import DistributedDataParallelCPU as DDPC  # Deprecated
 
-from rlpyt.utils.quick_args import save__init__args
-from rlpyt.utils.collections import namedarraytuple
-from rlpyt.utils.synchronize import RWLock
-from rlpyt.utils.logging import logger
-from rlpyt.models.utils import strip_ddp_state_dict
 
-AgentInputs = namedarraytuple("AgentInputs",
-    ["observation", "prev_action", "prev_reward"])
+AgentInputs = namedarraytuple(
+    "AgentInputs", ["observation", "prev_action", "prev_reward"]
+)
 AgentStep = namedarraytuple("AgentStep", ["action", "agent_info"])
 
 
@@ -29,7 +33,7 @@ class BaseAgent:
     need to extend certain funcionality to include those models, depending on
     how they are used.
     """
-    
+
     recurrent = False
     alternating = False
 
@@ -64,7 +68,7 @@ class BaseAgent:
     def initialize(self, env_spaces, share_memory=False, **kwargs):
         """
         Instantiates the neural net model(s) according to the environment
-        interfaces.  
+        interfaces.
 
         Uses shared memory as needed--e.g. in CpuSampler, workers have a copy
         of the agent for action-selection.  The workers automatically hold
@@ -80,8 +84,7 @@ class BaseAgent:
             share_memory (bool): whether to use shared memory for model parameters.
         """
         self.env_model_kwargs = self.make_env_to_model_kwargs(env_spaces)
-        self.model = self.ModelCls(**self.env_model_kwargs,
-            **self.model_kwargs)
+        self.model = self.ModelCls(**self.env_model_kwargs, **self.model_kwargs)
         if share_memory:
             self.model.share_memory()
             # Store the shared_model (CPU) under a separate name, in case the
@@ -108,8 +111,7 @@ class BaseAgent:
         if cuda_idx is None:
             return
         if self.shared_model is not None:
-            self.model = self.ModelCls(**self.env_model_kwargs,
-                **self.model_kwargs)
+            self.model = self.ModelCls(**self.env_model_kwargs, **self.model_kwargs)
             self.model.load_state_dict(self.shared_model.state_dict())
         self.device = torch.device("cuda", index=cuda_idx)
         self.model.to(self.device)
@@ -131,8 +133,10 @@ class BaseAgent:
             device_ids=None if device_id is None else [device_id],  # 1 GPU.
             output_device=device_id,
         )
-        logger.log("Initialized DistributedDataParallel agent model on "
-            f"device {self.device}.")
+        logger.log(
+            "Initialized DistributedDataParallel agent model on "
+            f"device {self.device}."
+        )
         return device_id
 
     def async_cpu(self, share_memory=True):
@@ -151,8 +155,7 @@ class BaseAgent:
         if self.device.type != "cpu":
             return
         assert self.shared_model is not None
-        self.model = self.ModelCls(**self.env_model_kwargs,
-            **self.model_kwargs)
+        self.model = self.ModelCls(**self.env_model_kwargs, **self.model_kwargs)
         # TODO: might need strip_ddp_state_dict.
         self.model.load_state_dict(self.shared_model.state_dict())
         if share_memory:  # Not needed in async_serial.
@@ -212,8 +215,9 @@ class BaseAgent:
         Typically called in the XXX during YY.
         """
         if self.shared_model is not self.model:  # (self.model gets trained)
-            self.shared_model.load_state_dict(strip_ddp_state_dict(
-                self.model.state_dict()))
+            self.shared_model.load_state_dict(
+                strip_ddp_state_dict(self.model.state_dict())
+            )
 
     def send_shared_memory(self):
         """Used in async mode only, in optimizer process; copies parameters
@@ -225,7 +229,8 @@ class BaseAgent:
         if self.shared_model is not self.model:
             with self._rw_lock.write_lock:
                 self.shared_model.load_state_dict(
-                    strip_ddp_state_dict(self.model.state_dict()))
+                    strip_ddp_state_dict(self.model.state_dict())
+                )
                 self._send_count.value += 1
 
     def recv_shared_memory(self):
@@ -245,8 +250,10 @@ class BaseAgent:
         pass  # Only needed for recurrent alternating agent, but might get called.
 
 
-AgentInputsRnn = namedarraytuple("AgentInputsRnn",  # Training only.
-    ["observation", "prev_action", "prev_reward", "init_rnn_state"])
+AgentInputsRnn = namedarraytuple(
+    "AgentInputsRnn",  # Training only.
+    ["observation", "prev_action", "prev_reward", "init_rnn_state"],
+)
 
 
 class RecurrentAgentMixin:
@@ -255,6 +262,7 @@ class RecurrentAgentMixin:
     remains agnostic).  To be used like ``class
     MyRecurrentAgent(RecurrentAgentMixin, MyAgent):``.
     """
+
     recurrent = True
 
     def __init__(self, *args, **kwargs):
@@ -276,7 +284,7 @@ class RecurrentAgentMixin:
 
     def advance_rnn_state(self, new_rnn_state):
         """Sets the recurrent state to the newly computed one (i.e. recurrent agents should
-        call this at the end of their ``step()``). """
+        call this at the end of their ``step()``)."""
         self._prev_rnn_state = new_rnn_state
 
     @property

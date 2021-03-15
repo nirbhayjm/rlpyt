@@ -1,10 +1,8 @@
-
 import numpy as np
 
 from rlpyt.agents.base import AgentInputs
-from rlpyt.utils.synchronize import drain_queue
 from rlpyt.utils.logging import logger
-
+from rlpyt.utils.synchronize import drain_queue
 
 EVAL_TRAJ_CHECK = 20  # [steps].
 
@@ -62,8 +60,7 @@ class ActionServer:
             b.acquire()
             assert not b.acquire(block=False)  # Debug check.
         if "bootstrap_value" in self.samples_np.agent:
-            self.samples_np.agent.bootstrap_value[:] = self.agent.value(
-                *agent_inputs)
+            self.samples_np.agent.bootstrap_value[:] = self.agent.value(*agent_inputs)
         if np.any(step_np.done):  # Reset at end of batch; ready for next.
             for b_reset in np.where(step_np.done)[0]:
                 step_np.action[b_reset] = 0  # Null prev_action into agent.
@@ -82,13 +79,15 @@ class ActionServer:
         step_np, step_pyt = self.eval_step_buffer_np, self.eval_step_buffer_pyt
         traj_infos = list()
         self.agent.reset()
-        agent_inputs = AgentInputs(step_pyt.observation, step_pyt.action,
-            step_pyt.reward)  # Fixed buffer objects.
+        agent_inputs = AgentInputs(
+            step_pyt.observation, step_pyt.action, step_pyt.reward
+        )  # Fixed buffer objects.
 
         for t in range(self.eval_max_T):
             if t % EVAL_TRAJ_CHECK == 0:  # (While workers stepping.)
-                traj_infos.extend(drain_queue(self.eval_traj_infos_queue,
-                    guard_sentinel=True))
+                traj_infos.extend(
+                    drain_queue(self.eval_traj_infos_queue, guard_sentinel=True)
+                )
             for b in obs_ready:
                 b.acquire()
                 # assert not b.acquire(block=False)  # Debug check.
@@ -100,17 +99,20 @@ class ActionServer:
             step_np.action[:] = action
             step_np.agent_info[:] = agent_info
             if self.eval_max_trajectories is not None and t % EVAL_TRAJ_CHECK == 0:
-                self.sync.stop_eval.value = len(traj_infos) >= self.eval_max_trajectories
+                self.sync.stop_eval.value = (
+                    len(traj_infos) >= self.eval_max_trajectories
+                )
             for w in act_ready:
                 # assert not w.acquire(block=False)  # Debug check.
                 w.release()
             if self.sync.stop_eval.value:
-                logger.log("Evaluation reach max num trajectories "
-                    f"({self.eval_max_trajectories}).")
+                logger.log(
+                    "Evaluation reach max num trajectories "
+                    f"({self.eval_max_trajectories})."
+                )
                 break
         if t == self.eval_max_T - 1 and self.eval_max_trajectories is not None:
-            logger.log("Evaluation reached max num time steps "
-                f"({self.eval_max_T}).")
+            logger.log("Evaluation reached max num time steps " f"({self.eval_max_T}).")
         for b in obs_ready:
             b.acquire()  # Workers always do extra release; drain it.
             assert not b.acquire(block=False)  # Debug check.
@@ -159,7 +161,9 @@ class AlternatingActionServer:
                 b.acquire()
                 # assert not b.acquire(block=False)  # Debug check.
             if "bootstrap_value" in self.samples_np.agent:
-                self.bootstrap_value_pair[alt][:] = self.agent.value(*agent_inputs_pair[alt])
+                self.bootstrap_value_pair[alt][:] = self.agent.value(
+                    *agent_inputs_pair[alt]
+                )
             if np.any(step_h.done):
                 for b_reset in np.where(step_h.done)[0]:
                     step_h.action[b_reset] = 0
@@ -184,8 +188,9 @@ class AlternatingActionServer:
 
         for t in range(self.eval_max_T):
             if t % EVAL_TRAJ_CHECK == 0:  # (While workers stepping.)
-                traj_infos.extend(drain_queue(self.eval_traj_infos_queue,
-                    guard_sentinel=True))
+                traj_infos.extend(
+                    drain_queue(self.eval_traj_infos_queue, guard_sentinel=True)
+                )
             for alt in range(2):
                 step_h = step_np_pair[alt]
                 for b in obs_ready_pair[alt]:
@@ -198,8 +203,11 @@ class AlternatingActionServer:
                 action, agent_info = self.agent.step(*agent_inputs_pair[alt])
                 step_h.action[:] = action
                 step_h.agent_info[:] = agent_info
-                if (self.eval_max_trajectories is not None and
-                        t % EVAL_TRAJ_CHECK == 0 and alt == 0):
+                if (
+                    self.eval_max_trajectories is not None
+                    and t % EVAL_TRAJ_CHECK == 0
+                    and alt == 0
+                ):
                     if len(traj_infos) >= self.eval_max_trajectories:
                         for b in obs_ready_pair[1 - alt]:
                             b.acquire()  # Now all workers waiting.
@@ -211,14 +219,15 @@ class AlternatingActionServer:
                     # assert not w.acquire(block=False)  # Debug check.
                     w.release()
             if stop:
-                logger.log("Evaluation reached max num trajectories "
-                    f"({self.eval_max_trajectories}).")
+                logger.log(
+                    "Evaluation reached max num trajectories "
+                    f"({self.eval_max_trajectories})."
+                )
                 break
 
         # TODO: check exit logic for/while ..?
         if not stop:
-            logger.log("Evaluation reached max num time steps "
-                f"({self.eval_max_T}).")
+            logger.log("Evaluation reached max num time steps " f"({self.eval_max_T}).")
 
         for b in obs_ready:
             b.acquire()  # Workers always do extra release; drain it.
@@ -278,7 +287,9 @@ class NoOverlapAlternatingActionServer:
                     # assert not w.acquire(block=False)  # Debug check.
                     w.release()
             if "bootstrap_value" in self.samples_np.agent:
-                self.bootstrap_value_pair[alt][:] = self.agent.value(*agent_inputs_pair[alt])
+                self.bootstrap_value_pair[alt][:] = self.agent.value(
+                    *agent_inputs_pair[alt]
+                )
             if np.any(step_h.done):
                 for b_reset in np.where(step_h.done)[0]:
                     step_h.action[b_reset] = 0
@@ -321,8 +332,9 @@ class NoOverlapAlternatingActionServer:
 
         for t in range(1, self.eval_max_T):
             if t % EVAL_TRAJ_CHECK == 0:  # (While workers stepping.)
-                traj_infos.extend(drain_queue(self.eval_traj_infos_queue,
-                    guard_sentinel=True))
+                traj_infos.extend(
+                    drain_queue(self.eval_traj_infos_queue, guard_sentinel=True)
+                )
             for alt in range(2):
                 step_h = step_np_pair[alt]
                 for b in obs_ready_pair[alt]:
@@ -339,13 +351,17 @@ class NoOverlapAlternatingActionServer:
                 step_h.action[:] = action
                 step_h.agent_info[:] = agent_info
             if self.eval_max_trajectories is not None and t % EVAL_TRAJ_CHECK == 0:
-                self.sync.stop_eval.value = len(traj_infos) >= self.eval_max_trajectories
+                self.sync.stop_eval.value = (
+                    len(traj_infos) >= self.eval_max_trajectories
+                )
             if self.sync.stop_eval.value:
                 for w in act_ready_pair[1 - alt]:  # Other released past loop.
                     # assert not w.acquire(block=False)  # Debug check.
                     w.release()
-                logger.log("Evaluation reached max num trajectories "
-                    f"({self.eval_max_trajectories}).")
+                logger.log(
+                    "Evaluation reached max num trajectories "
+                    f"({self.eval_max_trajectories})."
+                )
                 break
 
         # TODO: check logic when traj limit hits at natural end of loop?
@@ -353,8 +369,7 @@ class NoOverlapAlternatingActionServer:
             # assert not w.acquire(block=False)  # Debug check.
             w.release()
         if t == self.eval_max_T - 1 and self.eval_max_trajectories is not None:
-            logger.log("Evaluation reached max num time steps "
-                f"({self.eval_max_T}).")
+            logger.log("Evaluation reached max num time steps " f"({self.eval_max_T}).")
 
         for b in obs_ready:
             b.acquire()  # Workers always do extra release; drain it.

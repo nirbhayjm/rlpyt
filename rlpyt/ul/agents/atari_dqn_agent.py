@@ -1,38 +1,36 @@
-
-import torch
 import copy
 from collections import OrderedDict
 
-from rlpyt.agents.base import BaseAgent, AgentStep
-from rlpyt.utils.quick_args import save__init__args
+import torch
+
+from rlpyt.agents.base import AgentStep, BaseAgent
 from rlpyt.agents.dqn.epsilon_greedy import EpsilonGreedyAgentMixin
 from rlpyt.distributions.epsilon_greedy import EpsilonGreedy
-from rlpyt.utils.buffer import buffer_to
-from rlpyt.utils.logging import logger
-from rlpyt.utils.collections import namedarraytuple
 from rlpyt.models.utils import update_state_dict
-
 from rlpyt.ul.models.rl.atari_rl_models import AtariDqnModel
-
+from rlpyt.utils.buffer import buffer_to
+from rlpyt.utils.collections import namedarraytuple
+from rlpyt.utils.logging import logger
+from rlpyt.utils.quick_args import save__init__args
 
 AgentInfoConv = namedarraytuple("AgentInfo", ["q", "conv"])
 
 
 class AtariDqnAgent(EpsilonGreedyAgentMixin, BaseAgent):
     """
-    Standard agent for DQN algorithms with epsilon-greedy exploration.  
+    Standard agent for DQN algorithms with epsilon-greedy exploration.
     """
 
     def __init__(
-            self,
-            ModelCls=AtariDqnModel,
-            model_kwargs=None,
-            load_conv=False,
-            load_all=False,
-            state_dict_filename=None,
-            store_latent=False,
-            **kwargs
-            ):
+        self,
+        ModelCls=AtariDqnModel,
+        model_kwargs=None,
+        load_conv=False,
+        load_all=False,
+        state_dict_filename=None,
+        store_latent=False,
+        **kwargs
+    ):
         if model_kwargs is None:
             model_kwargs = dict()
         assert not (load_conv and load_all)
@@ -42,13 +40,13 @@ class AtariDqnAgent(EpsilonGreedyAgentMixin, BaseAgent):
     def __call__(self, observation, prev_action, prev_reward):
         """Returns Q-values for states/observations (with grad)."""
         prev_action = self.distribution.to_onehot(prev_action)
-        model_inputs = buffer_to((observation, prev_action, prev_reward),
-            device=self.device)
+        model_inputs = buffer_to(
+            (observation, prev_action, prev_reward), device=self.device
+        )
         q, _conv = self.model(*model_inputs)
-        return q.cpu() 
+        return q.cpu()
 
-    def initialize(self, env_spaces, share_memory=False,
-            global_B=1, env_ranks=None):
+    def initialize(self, env_spaces, share_memory=False, global_B=1, env_ranks=None):
         """Along with standard initialization, creates vector-valued epsilon
         for exploration, if applicable, with a different epsilon for each
         environment instance."""
@@ -59,20 +57,29 @@ class AtariDqnAgent(EpsilonGreedyAgentMixin, BaseAgent):
         )
         if self.load_conv:
             logger.log("Agent loading state dict: " + self.state_dict_filename)
-            loaded_state_dict = torch.load(self.state_dict_filename,
-                map_location=torch.device('cpu'))
+            loaded_state_dict = torch.load(
+                self.state_dict_filename, map_location=torch.device("cpu")
+            )
             # From UL, saves snapshot: params["algo_state_dict"]["encoder"]
-            loaded_state_dict = loaded_state_dict.get("algo_state_dict", loaded_state_dict)
+            loaded_state_dict = loaded_state_dict.get(
+                "algo_state_dict", loaded_state_dict
+            )
             loaded_state_dict = loaded_state_dict.get("encoder", loaded_state_dict)
             # A bit onerous, but ensures that state dicts match:
-            conv_state_dict = OrderedDict([(k.replace("conv.", "", 1), v)
-                for k, v in loaded_state_dict.items() if k.startswith("conv.")])
+            conv_state_dict = OrderedDict(
+                [
+                    (k.replace("conv.", "", 1), v)
+                    for k, v in loaded_state_dict.items()
+                    if k.startswith("conv.")
+                ]
+            )
             self.model.conv.load_state_dict(conv_state_dict)
             logger.log("Agent loaded CONV state dict.")
         elif self.load_all:
             # From RL, saves snapshot: params["agent_state_dict"]
-            loaded_state_dict = torch.load(self.state_dict_filename,
-                map_location=torch.device('cpu'))
+            loaded_state_dict = torch.load(
+                self.state_dict_filename, map_location=torch.device("cpu")
+            )
             self.load_state_dict(loaded_state_dict["agent_state_dict"])
             logger.log("Agnet loaded FULL state dict.")
         else:
@@ -95,29 +102,31 @@ class AtariDqnAgent(EpsilonGreedyAgentMixin, BaseAgent):
         self.target_model.to(self.device)
 
     def state_dict(self):
-        return dict(model=self.model.state_dict(),
-            target=self.target_model.state_dict())
+        return dict(
+            model=self.model.state_dict(), target=self.target_model.state_dict()
+        )
 
     @torch.no_grad()
     def step(self, observation, prev_action, prev_reward):
         """Computes Q-values for states/observations and selects actions by
         epsilon-greedy. (no grad)"""
         prev_action = self.distribution.to_onehot(prev_action)
-        model_inputs = buffer_to((observation, prev_action, prev_reward),
-            device=self.device)
+        model_inputs = buffer_to(
+            (observation, prev_action, prev_reward), device=self.device
+        )
         q, conv = self.model(*model_inputs)
         q = q.cpu()
         action = self.distribution.sample(q)
-        agent_info = AgentInfoConv(q=q,
-            conv=conv if self.store_latent else None)
+        agent_info = AgentInfoConv(q=q, conv=conv if self.store_latent else None)
         # action, agent_info = buffer_to((action, agent_info), device="cpu")
         return AgentStep(action=action, agent_info=agent_info)
 
     def target(self, observation, prev_action, prev_reward):
         """Returns the target Q-values for states/observations."""
         prev_action = self.distribution.to_onehot(prev_action)
-        model_inputs = buffer_to((observation, prev_action, prev_reward),
-            device=self.device)
+        model_inputs = buffer_to(
+            (observation, prev_action, prev_reward), device=self.device
+        )
         target_q, _conv = self.target_model(*model_inputs)
         return target_q.cpu()
 

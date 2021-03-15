@@ -1,13 +1,11 @@
-
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
 
 from rlpyt.models.mlp import MlpModel
 
 
 class VaeHeadModel(torch.nn.Module):
-
     def __init__(self, latent_size, action_size, hidden_sizes):
         super().__init__()
         self.head = MlpModel(
@@ -22,8 +20,8 @@ class VaeHeadModel(torch.nn.Module):
         h = F.relu(h)
         x = h if action is None else torch.cat([h, action], dim=-1)
         head = self.head(x)
-        mu = head[:, :-self._latent_size]
-        logvar = head[:, self._latent_size:]
+        mu = head[:, : -self._latent_size]
+        logvar = head[:, self._latent_size :]
 
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
@@ -32,17 +30,16 @@ class VaeHeadModel(torch.nn.Module):
 
 
 class VaeDecoderModel(torch.nn.Module):
-
     def __init__(
-            self,
-            latent_size,
-            reshape,
-            channels=None,
-            kernel_sizes=None,
-            strides=None,
-            paddings=None,
-            output_paddings=None,
-            ):
+        self,
+        latent_size,
+        reshape,
+        channels=None,
+        kernel_sizes=None,
+        strides=None,
+        paddings=None,
+        output_paddings=None,
+    ):
         super().__init__()
         self.linear = torch.nn.Linear(latent_size, int(np.prod(reshape)))
         self.convt = ConvTranspose2dModel(
@@ -66,34 +63,43 @@ class VaeDecoderModel(torch.nn.Module):
 
 
 class ConvTranspose2dModel(torch.nn.Module):
-
     def __init__(
-            self,
-            in_channels,
-            channels,
-            kernel_sizes,
-            strides,
-            paddings=None,
-            output_paddings=None,
-            nonlinearity=torch.nn.ReLU,
-            sigmoid_output=False,
-            ):
+        self,
+        in_channels,
+        channels,
+        kernel_sizes,
+        strides,
+        paddings=None,
+        output_paddings=None,
+        nonlinearity=torch.nn.ReLU,
+        sigmoid_output=False,
+    ):
         super().__init__()
         if paddings is None:
             paddings = [0 for _ in range(len(channels))]
         if output_paddings is None:
             output_paddings = [0 for _ in range(len(channels))]
-        assert len(channels) == len(kernel_sizes) == len(strides) == len(paddings) == len(output_paddings)
+        assert (
+            len(channels)
+            == len(kernel_sizes)
+            == len(strides)
+            == len(paddings)
+            == len(output_paddings)
+        )
         in_channels = [in_channels] + list(channels[:-1])
-        convt_layers = [torch.nn.ConvTranspose2d(
-            in_channels=ic,
-            out_channels=oc,
-            kernel_size=k,
-            stride=s,
-            padding=p,
-            output_padding=op,)
+        convt_layers = [
+            torch.nn.ConvTranspose2d(
+                in_channels=ic,
+                out_channels=oc,
+                kernel_size=k,
+                stride=s,
+                padding=p,
+                output_padding=op,
+            )
             for (ic, oc, k, s, p, op) in zip(
-                in_channels, channels, kernel_sizes, strides, paddings, output_paddings)]
+                in_channels, channels, kernel_sizes, strides, paddings, output_paddings
+            )
+        ]
         sequence = list()
         for convt_layer in convt_layers:
             sequence.append(convt_layer)

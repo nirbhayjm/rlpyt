@@ -1,4 +1,3 @@
-
 import torch
 
 from rlpyt.utils.tensor import valid_mean
@@ -6,7 +5,7 @@ from rlpyt.utils.tensor import valid_mean
 DistInfo = None
 
 
-class Distribution: 
+class Distribution:
     """Base distribution class.  Not all subclasses will impelement all
     methods."""
 

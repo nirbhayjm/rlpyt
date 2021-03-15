@@ -1,6 +1,6 @@
+import math
 
 import torch
-import math
 
 from rlpyt.distributions.base import Distribution
 from rlpyt.utils.collections import namedarraytuple
@@ -25,15 +25,15 @@ class Gaussian(Distribution):
     """
 
     def __init__(
-            self,
-            dim,
-            std=None,
-            clip=None,
-            noise_clip=None,
-            min_std=None,
-            max_std=None,
-            squash=None,  # None or > 0
-            ):
+        self,
+        dim,
+        std=None,
+        clip=None,
+        noise_clip=None,
+        min_std=None,
+        max_std=None,
+        squash=None,  # None or > 0
+    ):
         """Saves input arguments."""
         self._dim = dim
         self.set_std(std)
@@ -44,7 +44,7 @@ class Gaussian(Distribution):
         self.min_log_std = math.log(min_std) if min_std is not None else None
         self.max_log_std = math.log(max_std) if max_std is not None else None
         self.squash = squash
-        assert (clip is None or squash is None), "Choose one."
+        assert clip is None or squash is None, "Choose one."
 
     @property
     def dim(self):
@@ -61,10 +61,12 @@ class Gaussian(Distribution):
             old_log_std = old_dist_info.log_std
             new_log_std = new_dist_info.log_std
             if self.min_std is not None or self.max_std is not None:
-                old_log_std = torch.clamp(old_log_std, min=self.min_log_std,
-                    max=self.max_log_std)
-                new_log_std = torch.clamp(new_log_std, min=self.min_log_std,
-                    max=self.max_log_std)
+                old_log_std = torch.clamp(
+                    old_log_std, min=self.min_log_std, max=self.max_log_std
+                )
+                new_log_std = torch.clamp(
+                    new_log_std, min=self.min_log_std, max=self.max_log_std
+                )
             old_std = torch.exp(old_log_std)
             new_std = torch.exp(new_log_std)
             num += old_std ** 2 - new_std ** 2
@@ -87,14 +89,14 @@ class Gaussian(Distribution):
         if self.std is None:
             log_std = dist_info.log_std
             if self.min_log_std is not None or self.max_log_std is not None:
-                log_std = torch.clamp(log_std, min=self.min_log_std,
-                    max=self.max_log_std)
+                log_std = torch.clamp(
+                    log_std, min=self.min_log_std, max=self.max_log_std
+                )
         else:
             # shape = dist_info.mean.shape[:-1]
             # log_std = torch.log(self.std).repeat(*shape, 1)
             log_std = torch.log(self.std)  # Shape broadcast in following formula.
-        return torch.sum(log_std + math.log(math.sqrt(2 * math.pi * math.e)),
-            dim=-1)
+        return torch.sum(log_std + math.log(math.sqrt(2 * math.pi * math.e)), dim=-1)
 
     def perplexity(self, dist_info):
         return torch.exp(self.entropy(dist_info))
@@ -115,8 +117,9 @@ class Gaussian(Distribution):
         if self.std is None:
             log_std = dist_info.log_std
             if self.min_log_std is not None or self.max_log_std is not None:
-                log_std = torch.clamp(log_std, min=self.min_log_std,
-                    max=self.max_log_std)
+                log_std = torch.clamp(
+                    log_std, min=self.min_log_std, max=self.max_log_std
+                )
             std = torch.exp(log_std)
         else:
             std, log_std = self.std, torch.log(self.std)
@@ -125,12 +128,14 @@ class Gaussian(Distribution):
         # if self.squash is not None:
         #     x = torch.atanh(x / self.squash)  # No torch implementation.
         z = (x - mean) / (std + EPS)
-        logli = -(torch.sum(log_std + 0.5 * z ** 2, dim=-1) +
-            0.5 * self.dim * math.log(2 * math.pi))
+        logli = -(
+            torch.sum(log_std + 0.5 * z ** 2, dim=-1)
+            + 0.5 * self.dim * math.log(2 * math.pi)
+        )
         if self.squash is not None:
             logli -= torch.sum(
-                torch.log(self.squash * (1 - torch.tanh(x) ** 2) + EPS),
-                dim=-1)
+                torch.log(self.squash * (1 - torch.tanh(x) ** 2) + EPS), dim=-1
+            )
         return logli
 
     def likelihood_ratio(self, x, old_dist_info, new_dist_info):
@@ -140,7 +145,7 @@ class Gaussian(Distribution):
 
     def sample_loglikelihood(self, dist_info):
         """
-        Special method for use with SAC algorithm, which returns a new sampled 
+        Special method for use with SAC algorithm, which returns a new sampled
         action and its log-likelihood for training use.  Temporarily turns OFF
         squashing, so that log_likelihood can be computed on non-squashed sample,
         and then restores squashing and applies it to the sample before output.
@@ -172,15 +177,14 @@ class Gaussian(Distribution):
     #             dim=-1)
     #     return sample, logli
 
-
-        # squash = self.squash
-        # self.squash = None  # Temporarily turn OFF.
-        # sample = self.sample(dist_info)
-        # self.squash = squash  # Turn it back ON, raw_sample into squash correction.
-        # logli = self.log_likelihood(sample, dist_info)
-        # if squash is not None:
-        #     sample = squash * torch.tanh(sample)
-        # return sample, logli
+    # squash = self.squash
+    # self.squash = None  # Temporarily turn OFF.
+    # sample = self.sample(dist_info)
+    # self.squash = squash  # Turn it back ON, raw_sample into squash correction.
+    # logli = self.log_likelihood(sample, dist_info)
+    # if squash is not None:
+    #     sample = squash * torch.tanh(sample)
+    # return sample, logli
 
     def sample(self, dist_info):
         """
@@ -192,8 +196,9 @@ class Gaussian(Distribution):
         if self.std is None:
             log_std = dist_info.log_std
             if self.min_log_std is not None or self.max_log_std is not None:
-                log_std = torch.clamp(log_std, min=self.min_log_std,
-                    max=self.max_log_std)
+                log_std = torch.clamp(
+                    log_std, min=self.min_log_std, max=self.max_log_std
+                )
             std = torch.exp(log_std)
         else:
             # shape = mean.shape[:-1]

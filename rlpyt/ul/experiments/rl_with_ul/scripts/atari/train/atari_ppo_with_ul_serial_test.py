@@ -1,36 +1,36 @@
-
-import sys
 import pprint
+import sys
 
-from rlpyt.utils.launching.affinity import affinity_from_code
-from rlpyt.samplers.serial.sampler import SerialSampler
-from rlpyt.samplers.parallel.cpu.collectors import CpuResetCollector
-from rlpyt.envs.atari.atari_env import AtariTrajInfo
 from rlpyt.adam.atari_env import AtariEnv84
-# from rlpyt.algos.pg.ppo import PPO
-from rlpyt.ul.algos.ppo_ul import PpoUl
+from rlpyt.envs.atari.atari_env import AtariTrajInfo
+from rlpyt.runners.minibatch_rl import MinibatchRl
+from rlpyt.samplers.parallel.cpu.collectors import CpuResetCollector
+from rlpyt.samplers.serial.sampler import SerialSampler
+
 # from rlpyt.agents.dqn.atari.atari_dqn_agent import AtariDqnAgent
 # from rlpyt.ul.agents.atari_dqn_rl_from_ul_agent import AtariDqnRlFromUlAgent
 # from rlpyt.ul.agents.atari_pg_rl_from_ul_agent import AtariPgRlFromUlAgent
 from rlpyt.ul.agents.atari_pg_rl_with_ul_agent import AtariPgRlWithUlAgent
-from rlpyt.runners.minibatch_rl import MinibatchRl
-from rlpyt.utils.logging.context import logger_context
-# from rlpyt.utils.launching.variant import load_variant, update_config
 
+# from rlpyt.algos.pg.ppo import PPO
+from rlpyt.ul.algos.ppo_ul import PpoUl
 from rlpyt.ul.experiments.configs.atari_ppo_ul import configs
+from rlpyt.utils.launching.affinity import affinity_from_code
+from rlpyt.utils.logging.context import logger_context
+
+# from rlpyt.utils.launching.variant import load_variant, update_config
 
 
 def build_and_train(
-        slot_affinity_code="0slt_0gpu_4cpu_4cpr",
-        log_dir="test",
-        run_ID="0",
-        config_key="ppo_ul_16env"
-        ):
+    slot_affinity_code="0slt_0gpu_4cpu_4cpr",
+    log_dir="test",
+    run_ID="0",
+    config_key="ppo_ul_16env",
+):
     affinity = affinity_from_code(slot_affinity_code)
     config = configs[config_key]
     # variant = load_variant(log_dir)
     # config = update_config(config, variant)
-
 
     # config["sampler"]["batch_B"] = 4
     # config["sampler"]["batch_T"] = 5
@@ -44,10 +44,9 @@ def build_and_train(
     config["sampler"]["max_decorrelation_steps"] = 0
     config["sampler"]["batch_B"] = 3
     config["sampler"]["batch_T"] = 20
-    config["algo"]["ul_pri_alpha"] = 1.
+    config["algo"]["ul_pri_alpha"] = 1.0
     config["algo"]["ul_pri_n_step_return"] = 10
     config["algo"]["ul_replay_size"] = 900
-
 
     pprint.pprint(config)
 
@@ -62,11 +61,7 @@ def build_and_train(
     algo = PpoUl(optim_kwargs=config["optim"], **config["algo"])
     agent = AtariPgRlWithUlAgent(model_kwargs=config["model"], **config["agent"])
     runner = MinibatchRl(
-        algo=algo,
-        agent=agent,
-        sampler=sampler,
-        affinity=affinity,
-        **config["runner"]
+        algo=algo, agent=agent, sampler=sampler, affinity=affinity, **config["runner"]
     )
     name = config["env"]["game"]
     with logger_context(log_dir, run_ID, name, config):

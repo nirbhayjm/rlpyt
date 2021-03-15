@@ -1,9 +1,7 @@
-
-
-from copy import deepcopy
-from collections import namedtuple
-import os.path as osp
 import json
+import os.path as osp
+from collections import namedtuple
+from copy import deepcopy
 
 VARIANT = "variant_config.json"
 
@@ -88,7 +86,8 @@ def update_config(default, variant):
         if k not in new:
             raise KeyError(f"Variant key {k} not found in default config.")
         if isinstance(v, dict) != isinstance(new[k], dict):
-            raise TypeError(f"Variant dict structure at key {k} mismatched with"
-                " default.")
+            raise TypeError(
+                f"Variant dict structure at key {k} mismatched with" " default."
+            )
         new[k] = update_config(new[k], v) if isinstance(v, dict) else v
     return new

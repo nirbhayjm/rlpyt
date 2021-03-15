@@ -1,4 +1,3 @@
-
 import torch
 
 
@@ -29,7 +28,7 @@ class ScaleGrad(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         """Return the ``grad_output`` multiplied by ``ctx.scale``.  Also returns
-        a ``None`` as placeholder corresponding to (non-existent) gradient of 
+        a ``None`` as placeholder corresponding to (non-existent) gradient of
         the input ``scale`` of ``forward()``."""
         return grad_output * ctx.scale, None
 
@@ -49,13 +48,15 @@ def update_state_dict(model, state_dict, tau=1, strip_ddp=True):
     if tau == 1:
         model.load_state_dict(state_dict)
     elif tau > 0:
-        update_sd = {k: tau * state_dict[k] + (1 - tau) * v
-            for k, v in model.state_dict().items()}
+        update_sd = {
+            k: tau * state_dict[k] + (1 - tau) * v
+            for k, v in model.state_dict().items()
+        }
         model.load_state_dict(update_sd)
 
 
 def strip_ddp_state_dict(state_dict):
-    """ Workaround the fact that DistributedDataParallel prepends 'module.' to
+    """Workaround the fact that DistributedDataParallel prepends 'module.' to
     every key, but the sampler models will not be wrapped in
     DistributedDataParallel. (Solution from PyTorch forums.)"""
     clean_state_dict = type(state_dict)()

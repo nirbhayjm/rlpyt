@@ -1,4 +1,3 @@
-
 import copy
 
 configs = dict()
@@ -28,5 +27,3 @@ config = dict(
 )
 
 configs["a2c_1M"] = config
-
-

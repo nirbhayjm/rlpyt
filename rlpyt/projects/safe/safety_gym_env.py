@@ -1,14 +1,13 @@
-
 # Requires installing OpenAI gym and safety gym.
 
-import numpy as np
-
-import safety_gym
 import gym
+import numpy as np
 from gym import Wrapper
 
+import safety_gym
 from rlpyt.envs.gym import GymEnvWrapper
 from rlpyt.samplers.collections import TrajInfo
+
 
 # To use: return a dict of keys and default values which sometimes appear in
 # the wrapped env's env_info, so this env always presents those values (i.e.
@@ -23,12 +22,11 @@ def sometimes_info(*args, **kwargs):
 
 
 class SafetyGymEnvWrapper(Wrapper):
-
     def __init__(self, env, sometimes_info_kwargs, obs_prev_cost):
         super().__init__(env)
         self._sometimes_info = sometimes_info(**sometimes_info_kwargs)
         self._obs_prev_cost = obs_prev_cost
-        self._prev_cost = 0.  # Concat this into the observation.
+        self._prev_cost = 0.0  # Concat this into the observation.
         obs = env.reset()
         # Some edited version of safexp envs defines observation space only
         # after reset, so expose it here (what base Wrapper does):
@@ -41,24 +39,25 @@ class SafetyGymEnvWrapper(Wrapper):
             #     assert len(prop_shape) == 1
             #     prop_shape = (prop_shape[0] + 1,)
             obs_space = dict(
-                prop=gym.spaces.Box(-1e6, 1e6, prop_shape,
-                    obs["prop"].dtype))
+                prop=gym.spaces.Box(-1e6, 1e6, prop_shape, obs["prop"].dtype)
+            )
             if "vision" in obs:
-                obs_space["vision"] = gym.spaces.Box(0, 1, obs["vision"].shape,
-                    obs["vision"].dtype)
+                obs_space["vision"] = gym.spaces.Box(
+                    0, 1, obs["vision"].shape, obs["vision"].dtype
+                )
             # GymWrapper will in turn convert this to rlpyt.spaces.Composite.
             self.observation_space = gym.spaces.Dict(obs_space)
         elif obs_prev_cost:
             if isinstance(obs, dict):
                 self.observation_space.spaces["prev_cost"] = gym.spaces.Box(
-                    -1e6, 1e6, (1,), np.float32)
+                    -1e6, 1e6, (1,), np.float32
+                )
             else:
                 obs_shape = obs.shape
                 assert len(obs_shape) == 1
                 obs_shape = (obs_shape[0] + 1,)
-                self.observation_space = gym.spaces.Box(-1e6, 1e6, obs_shape,
-                    obs.dtype)
-        self._cum_cost = 0.
+                self.observation_space = gym.spaces.Box(-1e6, 1e6, obs_shape, obs.dtype)
+        self._cum_cost = 0.0
 
     def step(self, action):
         o, r, d, info = self.env.step(action)
@@ -78,16 +77,15 @@ class SafetyGymEnvWrapper(Wrapper):
         return o, r, d, info
 
     def reset(self):
-        self._prev_cost = 0.
-        self._cum_cost = 0.
+        self._prev_cost = 0.0
+        self._cum_cost = 0.0
         return self.observation(self.env.reset())
 
     def observation(self, obs):
         if isinstance(obs, dict):  # and "vision" in obs:
             # flatten everything else than vision.
             obs_ = dict(
-                prop=np.concatenate([obs[k].reshape(-1)
-                    for k in self._prop_keys])
+                prop=np.concatenate([obs[k].reshape(-1) for k in self._prop_keys])
             )
             if "vision" in obs:
                 # [H,W,C] --> [C,H,W]
@@ -109,10 +107,20 @@ def infill_info(info, sometimes_info):
     return info
 
 
-def safety_gym_make(*args, sometimes_info_kwargs=None, obs_prev_cost=True,
-        obs_version="default", **kwargs):
-    assert obs_version in ["default", "vision", "vision_only", "no_lidar",
-        "no_constraints"]
+def safety_gym_make(
+    *args,
+    sometimes_info_kwargs=None,
+    obs_prev_cost=True,
+    obs_version="default",
+    **kwargs
+):
+    assert obs_version in [
+        "default",
+        "vision",
+        "vision_only",
+        "no_lidar",
+        "no_constraints",
+    ]
     if obs_version != "default":
         eid = kwargs["id"]  # Must provide as kwarg, not arg.
         names = dict(  # Map to my modification in safety-gym suite.
@@ -124,15 +132,16 @@ def safety_gym_make(*args, sometimes_info_kwargs=None, obs_prev_cost=True,
         name = names[obs_version]
         # e.g. Safexp-PointGoal1-v0 --> Safexp-PointGoal1Vision-v0
         kwargs["id"] = eid[:-3] + name + eid[-3:]
-    return GymEnvWrapper(SafetyGymEnvWrapper(
-        gym.make(*args, **kwargs),
-        sometimes_info_kwargs=sometimes_info_kwargs or dict(),
-        obs_prev_cost=obs_prev_cost),
+    return GymEnvWrapper(
+        SafetyGymEnvWrapper(
+            gym.make(*args, **kwargs),
+            sometimes_info_kwargs=sometimes_info_kwargs or dict(),
+            obs_prev_cost=obs_prev_cost,
+        ),
     )
 
 
 class SafetyGymTrajInfo(TrajInfo):
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Cost = 0

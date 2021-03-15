@@ -1,10 +1,9 @@
-
-import sys
 import copy
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2
@@ -13,7 +12,9 @@ num_computers = int(args[1])
 
 print(f"MY_COMPUTER: {my_computer},  NUM_COMPUTERS: {num_computers}")
 
-script = "rlpyt/ul/experiments/rl_with_ul/scripts/atari/train/atari_ppo_with_ul_serial.py"
+script = (
+    "rlpyt/ul/experiments/rl_with_ul/scripts/atari/train/atari_ppo_with_ul_serial.py"
+)
 
 affinity_code = quick_affinity_code(contexts_per_gpu=3)
 runs_per_setting = 2
@@ -37,24 +38,36 @@ keys = [("algo", "min_steps_rl")]
 variant_levels_1.append(VariantLevel(keys, values, dir_names))
 
 ul_update_schedules = [
-    "quadratic_15", "quadratic_30",
-    "pulse_1000000_1000", "pulse_1000000_4000",
-    "pulse_2000000_4000", "pulse_4000000_4000"
+    "quadratic_15",
+    "quadratic_30",
+    "pulse_1000000_1000",
+    "pulse_1000000_4000",
+    "pulse_2000000_4000",
+    "pulse_4000000_4000",
 ]
 max_steps_ul = [
-    10e6, 5e6,
-    20e6, 5e6,
-    10e6, 20e6,
+    10e6,
+    5e6,
+    20e6,
+    5e6,
+    10e6,
+    20e6,
 ]  # ~20k updates total
 min_steps_ul = [
-    5e4, 5e4,
-    1e5, 1e5,
-    1e5, 1e5,
+    5e4,
+    5e4,
+    1e5,
+    1e5,
+    1e5,
+    1e5,
 ]
 values = list(zip(ul_update_schedules, max_steps_ul, min_steps_ul))
 dir_names = ["{}_{}maxstepulmin{}".format(*v) for v in values]
-keys = [("algo", "ul_update_schedule"), ("algo", "max_steps_ul"),
-    ("algo", "min_steps_ul")]
+keys = [
+    ("algo", "ul_update_schedule"),
+    ("algo", "max_steps_ul"),
+    ("algo", "min_steps_ul"),
+]
 variant_levels_1.append(VariantLevel(keys, values, dir_names))
 
 ul_lr_anneals = [None, "cosine"]
@@ -80,7 +93,6 @@ keys = [("env", "game")]
 variant_levels_1.append(VariantLevel(keys, values, dir_names))
 # variant_levels_2.append(VariantLevel(keys, values, dir_names))
 # variant_levels_3.append(VariantLevel(keys, values, dir_names))
-
 
 
 ##################################################
@@ -118,4 +130,3 @@ run_experiments(
     log_dirs=my_log_dirs,
     common_args=(default_config_key,),
 )
-

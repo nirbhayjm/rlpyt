@@ -1,7 +1,6 @@
-
 from rlpyt.utils.launching.affinity import encode_affinity
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 script = "rlpyt/experiments/scripts/atari/pg/train/atari_lstm_a2c_gpu.py"
 affinity_code = encode_affinity(

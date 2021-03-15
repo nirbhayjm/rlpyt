@@ -1,10 +1,9 @@
-
-import sys
 import copy
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2
@@ -13,7 +12,9 @@ num_computers = int(args[1])
 
 print(f"MY_COMPUTER: {my_computer},  NUM_COMPUTERS: {num_computers}")
 
-script = "rlpyt/ul/experiments/rl_from_ul/scripts/atari/train/atari_ppo_from_ul_serial.py"
+script = (
+    "rlpyt/ul/experiments/rl_from_ul/scripts/atari/train/atari_ppo_from_ul_serial.py"
+)
 
 affinity_code = quick_affinity_code(contexts_per_gpu=3)
 runs_per_setting = 3
@@ -34,8 +35,11 @@ lr_schedules = ["cosine"] * 2
 lr_warmups = [1e3] * 2
 values = list(zip(learning_rates, lr_schedules, lr_warmups))
 dir_names = ["{}lr_{}sched_{}wrmp".format(*v) for v in values]
-keys = [("pretrain", "learning_rate"), ("pretrain", "learning_rate_anneal"),
-    ("pretrain", "learning_rate_warmup")]
+keys = [
+    ("pretrain", "learning_rate"),
+    ("pretrain", "learning_rate_anneal"),
+    ("pretrain", "learning_rate_warmup"),
+]
 variant_levels_1.append(VariantLevel(keys, values, dir_names))
 
 
@@ -57,12 +61,14 @@ n_steps = [25e6]
 pretrain_algos = ["STDIM"]
 replays = ["20200608/15M_VecEps_B78"]
 model_dirs = ["/data/adam/ul4rl/models/20200904/atari_ul_stdim_1/"]
-values = list(zip(
-    n_steps,
-    pretrain_algos,
-    replays,
-    model_dirs,
-))
+values = list(
+    zip(
+        n_steps,
+        pretrain_algos,
+        replays,
+        model_dirs,
+    )
+)
 dir_names = ["RlFromUl"]  # TRAIN SCRIPT SPLITS OFF THIS
 keys = [
     ("runner", "n_steps"),
@@ -111,4 +117,3 @@ run_experiments(
     log_dirs=my_log_dirs,
     common_args=(default_config_key, experiment_title),
 )
-

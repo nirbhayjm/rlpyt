@@ -1,15 +1,14 @@
-
 import time
+
 import psutil
 import torch
 
 from rlpyt.samplers.async_.base import AsyncParallelSamplerMixin
-from rlpyt.samplers.parallel.base import ParallelSamplerBase
 from rlpyt.samplers.async_.collectors import DbCpuResetCollector
+from rlpyt.samplers.parallel.base import ParallelSamplerBase
 from rlpyt.samplers.parallel.cpu.collectors import CpuEvalCollector
 from rlpyt.utils.logging import logger
 from rlpyt.utils.synchronize import drain_queue
-
 
 EVAL_TRAJ_CHECK = 0.1  # Seconds.
 
@@ -21,10 +20,19 @@ class AsyncCpuSampler(AsyncParallelSamplerMixin, ParallelSamplerBase):
     itself, and otherwise will run similarly to the ``CpuSampler``.
     """
 
-    def __init__(self, *args, CollectorCls=DbCpuResetCollector,
-            eval_CollectorCls=CpuEvalCollector, **kwargs):
-        super().__init__(*args, CollectorCls=CollectorCls,
-            eval_CollectorCls=eval_CollectorCls, **kwargs)
+    def __init__(
+        self,
+        *args,
+        CollectorCls=DbCpuResetCollector,
+        eval_CollectorCls=CpuEvalCollector,
+        **kwargs
+    ):
+        super().__init__(
+            *args,
+            CollectorCls=CollectorCls,
+            eval_CollectorCls=eval_CollectorCls,
+            **kwargs
+        )
 
     ###########################################################################
     # Sampler runner methods (forked).

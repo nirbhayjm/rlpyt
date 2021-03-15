@@ -1,22 +1,25 @@
+import ctypes
+import multiprocessing as mp
 
 import numpy as np
-import multiprocessing as mp
-import ctypes
 import torch
 
-from rlpyt.utils.collections import (NamedArrayTuple, namedarraytuple_like,
-    NamedArrayTupleSchema_like, NamedTuple)
+from rlpyt.utils.collections import (
+    NamedArrayTuple,
+    NamedArrayTupleSchema_like,
+    NamedTuple,
+    namedarraytuple_like,
+)
 
 
-def buffer_from_example(example, leading_dims, share_memory=False,
-        use_NatSchema=None):
+def buffer_from_example(example, leading_dims, share_memory=False, use_NatSchema=None):
     """Allocates memory and returns it in `namedarraytuple` with same
     structure as ``examples``, which should be a `namedtuple` or
     `namedarraytuple`. Applies the same leading dimensions ``leading_dims`` to
     every entry, and otherwise matches their shapes and dtypes. The examples
     should have no leading dimensions.  ``None`` fields will stay ``None``.
     Optionally allocate on OS shared memory. Uses ``build_array()``.
-    
+
     New: can use NamedArrayTuple types by the `use_NatSchema` flag, which
     may be easier for pickling/unpickling when using spawn instead
     of fork. If use_NatSchema is None, the type of ``example`` will be used to
@@ -33,9 +36,14 @@ def buffer_from_example(example, leading_dims, share_memory=False,
             buffer_type = namedarraytuple_like(example)
     except TypeError:  # example was not a namedtuple or namedarraytuple
         return build_array(example, leading_dims, share_memory)
-    return buffer_type(*(buffer_from_example(v, leading_dims,
-        share_memory=share_memory, use_NatSchema=use_NatSchema)
-        for v in example))
+    return buffer_type(
+        *(
+            buffer_from_example(
+                v, leading_dims, share_memory=share_memory, use_NatSchema=use_NatSchema
+            )
+            for v in example
+        )
+    )
 
 
 def build_array(example, leading_dims, share_memory=False):
@@ -69,10 +77,12 @@ class np_mp_array_spawn(np.ndarray):
     init function (or similar). Note that this can only be shared _on process
     startup_; it can't be passed through, e.g., a queue at runtime. Also it
     cannot be pickled outside of multiprocessing's internals."""
+
     _shmem = None
 
-    def __new__(cls, shape, dtype=None, buffer=None, offset=None, strides=None,
-                order=None):
+    def __new__(
+        cls, shape, dtype=None, buffer=None, offset=None, strides=None, order=None
+    ):
         # init buffer
         if buffer is None:
             assert offset is None
@@ -88,11 +98,19 @@ class np_mp_array_spawn(np.ndarray):
         else:
             raise ValueError(
                 f"{cls.__name__} does not support specifying custom "
-                f" buffers, but was given {buffer!r}")
+                f" buffers, but was given {buffer!r}"
+            )
 
         # init array
-        obj = np.ndarray.__new__(cls, shape, dtype=dtype, buffer=shmem,
-                                 offset=offset, strides=strides, order=order)
+        obj = np.ndarray.__new__(
+            cls,
+            shape,
+            dtype=dtype,
+            buffer=shmem,
+            offset=offset,
+            strides=strides,
+            order=order,
+        )
         obj._shmem = shmem
 
         return obj
@@ -104,16 +122,14 @@ class np_mp_array_spawn(np.ndarray):
     def __reduce__(self):
         # credit to https://stackoverflow.com/a/53534485 for awful/wonderful
         # __array_interface__ hack
-        absolute_offset = self.__array_interface__['data'][0]
+        absolute_offset = self.__array_interface__["data"][0]
         base_address = ctypes.addressof(self._shmem)
         offset = absolute_offset - base_address
         assert offset <= len(self._shmem), (offset, len(self._shmem))
-        order = 'FC'[self.flags['C_CONTIGUOUS']]
+        order = "FC"[self.flags["C_CONTIGUOUS"]]
         # buffer should get pickled by np
-        assert self._shmem is not None, \
-            "somehow this lost its _shmem reference"
-        newargs = (self.shape, self.dtype, self._shmem, offset, self.strides,
-                   order)
+        assert self._shmem is not None, "somehow this lost its _shmem reference"
+        newargs = (self.shape, self.dtype, self._shmem, offset, self.strides, order)
         return (type(self), newargs)
 
 

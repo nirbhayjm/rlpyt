@@ -1,10 +1,10 @@
+from collections import namedtuple
 
 import numpy as np
 from gym.spaces.dict import Dict as GymDict
-from collections import namedtuple
 
-from rlpyt.utils.collections import is_namedtuple_class, is_namedtuple
 from rlpyt.spaces.composite import Composite
+from rlpyt.utils.collections import is_namedtuple, is_namedtuple_class
 
 
 class GymSpaceWrapper:
@@ -15,8 +15,8 @@ class GymSpaceWrapper:
     """
 
     def __init__(self, space, null_value=0, name="obs", force_float32=True):
-        """Input ``space`` is a gym space instance.  
-        
+        """Input ``space`` is a gym space instance.
+
         Input ``name`` is used to disambiguate different gym spaces being
         wrapped, which is necessary if more than one GymDict space is to be
         wrapped in the same file.  The reason is that the associated
@@ -31,22 +31,27 @@ class GymSpaceWrapper:
             if nt is None:
                 nt = namedtuple(name, [k for k in space.spaces.keys()])
                 globals()[name] = nt  # Put at module level for pickle.
-            elif not (is_namedtuple_class(nt) and
-                    sorted(nt._fields) ==
-                    sorted([k for k in space.spaces.keys()])):
+            elif not (
+                is_namedtuple_class(nt)
+                and sorted(nt._fields) == sorted([k for k in space.spaces.keys()])
+            ):
                 raise ValueError(f"Name clash in globals: {name}.")
-            spaces = [GymSpaceWrapper(
-                space=v,
-                null_value=null_value,
-                name="_".join([name, k]),
-                force_float32=force_float32)
-                for k, v in space.spaces.items()]
+            spaces = [
+                GymSpaceWrapper(
+                    space=v,
+                    null_value=null_value,
+                    name="_".join([name, k]),
+                    force_float32=force_float32,
+                )
+                for k, v in space.spaces.items()
+            ]
             self.space = Composite(spaces, nt)
             self._dtype = None
         else:
             self.space = space
-            self._dtype = np.float32 if (space.dtype == np.float64 and
-                force_float32) else None
+            self._dtype = (
+                np.float32 if (space.dtype == np.float64 and force_float32) else None
+            )
 
     def sample(self):
         """Returns a single sample in a namedtuple (for composite) or numpy
@@ -124,8 +129,7 @@ class GymSpaceWrapper:
 
 def dict_to_nt(value, name):
     if isinstance(value, dict):
-        values = {k: dict_to_nt(v, "_".join([name, k]))
-            for k, v in value.items()}
+        values = {k: dict_to_nt(v, "_".join([name, k])) for k, v in value.items()}
         return globals()[name](**values)
     if isinstance(value, np.ndarray) and value.dtype == np.float64:
         return np.asarray(value, dtype=np.float32)

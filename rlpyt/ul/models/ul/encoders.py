@@ -1,4 +1,3 @@
-
 import torch
 
 from rlpyt.models.conv2d import Conv2dModel
@@ -10,24 +9,22 @@ from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 def weight_init(m):
     """Kaiming_normal is standard for relu networks, sometimes."""
     if isinstance(m, (torch.nn.Linear, torch.nn.Conv2d)):
-        torch.nn.init.kaiming_normal_(m.weight, mode="fan_in", 
-            nonlinearity="relu")
+        torch.nn.init.kaiming_normal_(m.weight, mode="fan_in", nonlinearity="relu")
         torch.nn.init.zeros_(m.bias)
 
 
 class EncoderModel(torch.nn.Module):
-
     def __init__(
-            self,
-            image_shape,
-            latent_size,
-            channels,
-            kernel_sizes,
-            strides,
-            paddings=None,
-            hidden_sizes=None,  # usually None; NOT the same as anchor MLP
-            kiaming_init=True,
-            ):
+        self,
+        image_shape,
+        latent_size,
+        channels,
+        kernel_sizes,
+        strides,
+        paddings=None,
+        hidden_sizes=None,  # usually None; NOT the same as anchor MLP
+        kiaming_init=True,
+    ):
         super().__init__()
         c, h, w = image_shape
         self.conv = Conv2dModel(
@@ -52,7 +49,7 @@ class EncoderModel(torch.nn.Module):
         lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
         if observation.dtype == torch.uint8:
             img = observation.type(torch.float)
-            img = img.mul_(1. / 255)
+            img = img.mul_(1.0 / 255)
         else:
             img = observation
         conv = self.conv(img.view(T * B, *img_shape))
@@ -72,16 +69,15 @@ class EncoderModel(torch.nn.Module):
 
 
 class DmlabEncoderModel(torch.nn.Module):
-
     def __init__(
-            self,
-            image_shape,
-            latent_size,
-            use_fourth_layer=True,
-            skip_connections=True,
-            hidden_sizes=None,
-            kiaming_init=True,
-            ):
+        self,
+        image_shape,
+        latent_size,
+        use_fourth_layer=True,
+        skip_connections=True,
+        hidden_sizes=None,
+        kiaming_init=True,
+    ):
         super().__init__()
         c, h, w = image_shape
         self.conv = DmlabConv2dModel(
@@ -105,7 +101,7 @@ class DmlabEncoderModel(torch.nn.Module):
         lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
         if observation.dtype == torch.uint8:
             img = observation.type(torch.float)
-            img = img.mul_(1. / 255)
+            img = img.mul_(1.0 / 255)
         else:
             img = observation
         conv = self.conv(img.view(T * B, *img_shape))

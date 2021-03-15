@@ -1,10 +1,9 @@
-
-import sys
 import copy
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2
@@ -39,18 +38,21 @@ min_steps_ul = [10e3, 10e3]
 anneals = [None, None]  # becaues short runs
 values = list(zip(ul_update_schedules, min_steps_ul, anneals))
 dir_names = ["{}_{}minstepul_{}anneal".format(*v) for v in values]
-keys = [("algo", "ul_update_schedule"), ("algo", "min_steps_ul"),
-    ("algo", "ul_lr_schedule")]
+keys = [
+    ("algo", "ul_update_schedule"),
+    ("algo", "min_steps_ul"),
+    ("algo", "ul_lr_schedule"),
+]
 variant_levels_1.append(VariantLevel(keys, values, dir_names))
 variant_levels_2.append(VariantLevel(keys, values, dir_names))
 
-pri_alphas = [0.]
+pri_alphas = [0.0]
 values = list(zip(pri_alphas))
 dir_names = ["{}prialpha".format(*v) for v in values]
 keys = [("algo", "ul_pri_alpha")]
 variant_levels_1.append(VariantLevel(keys, values, dir_names))
 
-pri_alphas = [1., 10.]
+pri_alphas = [1.0, 10.0]
 values = list(zip(pri_alphas))
 dir_names = ["{}prialpha".format(*v) for v in values]
 keys = [("algo", "ul_pri_alpha")]
@@ -66,19 +68,22 @@ variant_levels_2.append(VariantLevel(keys, values, dir_names))
 doms = [
     "cheetah",
     # "ball_in_cup",
-    "cartpole", "cartpole",
+    "cartpole",
+    "cartpole",
     "walker",
 ]
 tasks = [
     "run",
     # "catch",
-    "swingup", "swingup_sparse",
+    "swingup",
+    "swingup_sparse",
     "walk",
 ]
 fskips = [
     4,
     # 4,
-    8, 8,
+    8,
+    8,
     2,
 ]
 qlrs = [2e-4] + [1e-3] * 3
@@ -89,7 +94,8 @@ bss = [512] + [256] * 3  # [512]
 steps = [
     100e3,
     # 75e3,
-    375e2, 100e3,
+    375e2,
+    100e3,
     100e3,
 ]
 steps = [s + 1e4 for s in steps]  # 1e4 initialization min steps learn

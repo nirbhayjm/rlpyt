@@ -1,43 +1,46 @@
-
 import copy
-import torch
 from collections import OrderedDict
 
-from rlpyt.agents.base import BaseAgent, AgentStep
-from rlpyt.utils.quick_args import save__init__args
-from rlpyt.ul.models.rl.sac_rl_models import (SacModel,
-    SacConvModel, SacFc1Model, SacActorModel, SacCriticModel)
-from rlpyt.distributions.gaussian import Gaussian, DistInfoStd
-from rlpyt.utils.buffer import buffer_to
+import torch
+
+from rlpyt.agents.base import AgentStep, BaseAgent
+from rlpyt.distributions.gaussian import DistInfoStd, Gaussian
 from rlpyt.models.utils import update_state_dict
+from rlpyt.ul.models.rl.sac_rl_models import (
+    SacActorModel,
+    SacConvModel,
+    SacCriticModel,
+    SacFc1Model,
+    SacModel,
+)
+from rlpyt.utils.buffer import buffer_to
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.logging import logger
-
+from rlpyt.utils.quick_args import save__init__args
 
 AgentInfo = namedarraytuple("AgentInfo", ["dist_info", "conv"])
 
 
 class SacAgent(BaseAgent):
-
     def __init__(
-            self,
-            ModelCls=SacModel,
-            ConvModelCls=SacConvModel,
-            Fc1ModelCls=SacFc1Model,
-            PiModelCls=SacActorModel,
-            QModelCls=SacCriticModel,
-            conv_kwargs=None,
-            fc1_kwargs=None,
-            pi_model_kwargs=None,
-            q_model_kwargs=None,
-            initial_state_dict=None,
-            action_squash=1.,
-            pretrain_std=0.75,  # 0.75 gets pretty uniform squashed actions
-            load_conv=False,
-            load_all=False,
-            state_dict_filename=None,
-            store_latent=False,
-            ):
+        self,
+        ModelCls=SacModel,
+        ConvModelCls=SacConvModel,
+        Fc1ModelCls=SacFc1Model,
+        PiModelCls=SacActorModel,
+        QModelCls=SacCriticModel,
+        conv_kwargs=None,
+        fc1_kwargs=None,
+        pi_model_kwargs=None,
+        q_model_kwargs=None,
+        initial_state_dict=None,
+        action_squash=1.0,
+        pretrain_std=0.75,  # 0.75 gets pretty uniform squashed actions
+        load_conv=False,
+        load_all=False,
+        state_dict_filename=None,
+        store_latent=False,
+    ):
         if conv_kwargs is None:
             conv_kwargs = dict()
         if fc1_kwargs is None:
@@ -51,58 +54,63 @@ class SacAgent(BaseAgent):
         self.min_itr_learn = 0  # Get from algo.
         assert not (load_conv and load_all)
 
-    def initialize(self, env_spaces, share_memory=False,
-            global_B=1, env_ranks=None):
+    def initialize(self, env_spaces, share_memory=False, global_B=1, env_ranks=None):
         self.conv = self.ConvModelCls(
-            image_shape=env_spaces.observation.shape,
-            **self.conv_kwargs)
+            image_shape=env_spaces.observation.shape, **self.conv_kwargs
+        )
         self.q_fc1 = self.Fc1ModelCls(
-            input_size=self.conv.output_size,
-            **self.fc1_kwargs)
+            input_size=self.conv.output_size, **self.fc1_kwargs
+        )
         self.pi_fc1 = self.Fc1ModelCls(
-            input_size=self.conv.output_size,
-            **self.fc1_kwargs)
+            input_size=self.conv.output_size, **self.fc1_kwargs
+        )
 
         latent_size = self.q_fc1.output_size
         action_size = env_spaces.action.shape[0]
 
         # These are just MLPs
         self.pi_mlp = self.PiModelCls(
-            input_size=latent_size,
-            action_size=action_size,
-            **self.pi_model_kwargs)
+            input_size=latent_size, action_size=action_size, **self.pi_model_kwargs
+        )
         self.q_mlps = self.QModelCls(
-            input_size=latent_size,
-            action_size=action_size,
-            **self.q_model_kwargs)
+            input_size=latent_size, action_size=action_size, **self.q_model_kwargs
+        )
         self.target_q_mlps = copy.deepcopy(self.q_mlps)  # Separate params.
 
         # Make reference to the full actor model including encoder.
         # CAREFUL ABOUT TRAIN MODE FOR LAYER NORM IF CHANGING THIS?
-        self.model = SacModel(conv=self.conv, pi_fc1=self.pi_fc1,
-            pi_mlp=self.pi_mlp)
+        self.model = SacModel(conv=self.conv, pi_fc1=self.pi_fc1, pi_mlp=self.pi_mlp)
 
         if self.load_conv:
             logger.log("Agent loading state dict: " + self.state_dict_filename)
-            loaded_state_dict = torch.load(self.state_dict_filename,
-                map_location=torch.device("cpu"))
+            loaded_state_dict = torch.load(
+                self.state_dict_filename, map_location=torch.device("cpu")
+            )
             # From UL, saves snapshot: params["algo_state_dict"]["encoder"]
             if "algo_state_dict" in loaded_state_dict:
                 loaded_state_dict = loaded_state_dict
-            loaded_state_dict = loaded_state_dict.get("algo_state_dict", loaded_state_dict)
+            loaded_state_dict = loaded_state_dict.get(
+                "algo_state_dict", loaded_state_dict
+            )
             loaded_state_dict = loaded_state_dict.get("encoder", loaded_state_dict)
             # A bit onerous, but ensures that state dicts match:
-            conv_state_dict = OrderedDict([(k, v)  # .replace("conv.", "", 1)
-                for k, v in loaded_state_dict.items() if k.startswith("conv.")])
+            conv_state_dict = OrderedDict(
+                [
+                    (k, v)  # .replace("conv.", "", 1)
+                    for k, v in loaded_state_dict.items()
+                    if k.startswith("conv.")
+                ]
+            )
             self.conv.load_state_dict(conv_state_dict)
             # Double check it gets into the q_encoder as well.
             logger.log("Agent loaded CONV state dict.")
         elif self.load_all:
             # From RL, saves snapshot: params["agent_state_dict"]
-            loaded_state_dict = torch.load(self.state_dict_filename,
-                map_location=torch.device('cpu'))
+            loaded_state_dict = torch.load(
+                self.state_dict_filename, map_location=torch.device("cpu")
+            )
             self.load_state_dict(loaded_state_dict["agent_state_dict"])
-            logger.log("Agnet loaded FULL state dict.")            
+            logger.log("Agnet loaded FULL state dict.")
         else:
             logger.log("Agent NOT loading state dict.")
 
@@ -145,14 +153,15 @@ class SacAgent(BaseAgent):
     @torch.no_grad()
     def step(self, observation, prev_action, prev_reward):
         observation, prev_action, prev_reward = buffer_to(
-            (observation, prev_action, prev_reward),
-            device=self.device)
+            (observation, prev_action, prev_reward), device=self.device
+        )
         # self.model includes encoder + actor MLP.
         mean, log_std, latent, conv = self.model(observation, prev_action, prev_reward)
         dist_info = DistInfoStd(mean=mean, log_std=log_std)
         action = self.distribution.sample(dist_info)
-        agent_info = AgentInfo(dist_info=dist_info,
-            conv=conv if self.store_latent else None)
+        agent_info = AgentInfo(
+            dist_info=dist_info, conv=conv if self.store_latent else None
+        )
         action, agent_info = buffer_to((action, agent_info), device="cpu")
         return AgentStep(action=action, agent_info=agent_info)
 
@@ -169,8 +178,9 @@ class SacAgent(BaseAgent):
         action.
         Assume variables already on device."""
         latent = self.target_q_fc1(conv_out)
-        target_q1, target_q2 = self.target_q_mlps(latent, action, prev_action,
-            prev_reward)
+        target_q1, target_q2 = self.target_q_mlps(
+            latent, action, prev_action, prev_reward
+        )
         return target_q1.cpu(), target_q2.cpu()
 
     def pi(self, conv_out, prev_action, prev_reward):
@@ -218,7 +228,7 @@ class SacAgent(BaseAgent):
         self.pi_fc1.eval()  # should already be done
         self.q_mlps.eval()  # not used anyway
         self.pi_mlp.eval()  # should already be done
-        self.distribution.set_std(0.)  # Deterministic (dist_info std ignored).
+        self.distribution.set_std(0.0)  # Deterministic (dist_info std ignored).
 
     def state_dict(self):
         return dict(

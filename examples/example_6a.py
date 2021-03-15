@@ -1,4 +1,3 @@
-
 """
 Runs multiple instances of the Atari environment and optimizes using A2C
 algorithm and a feed-forward agent. Uses GPU parallel sampler, with option for
@@ -8,15 +7,15 @@ whether to reset environments in middle of sampling batch.
 """
 import sys
 
-from rlpyt.utils.launching.affinity import affinity_from_code
-from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
-from rlpyt.samplers.parallel.gpu.collectors import GpuWaitResetCollector
-from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
-from rlpyt.algos.pg.a2c import A2C
 from rlpyt.agents.pg.atari import AtariFfAgent
+from rlpyt.algos.pg.a2c import A2C
+from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 from rlpyt.runners.minibatch_rl import MinibatchRl
-from rlpyt.utils.logging.context import logger_context
+from rlpyt.samplers.parallel.gpu.collectors import GpuWaitResetCollector
+from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
+from rlpyt.utils.launching.affinity import affinity_from_code
 from rlpyt.utils.launching.variant import load_variant, update_config
+from rlpyt.utils.logging.context import logger_context
 
 
 def build_and_train(slot_affinity_code, log_dir, run_ID):

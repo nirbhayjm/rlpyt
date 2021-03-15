@@ -1,13 +1,12 @@
-
 import psutil
 import torch
 
-from rlpyt.samplers.base import BaseSampler
 from rlpyt.samplers.async_.base import AsyncSamplerMixin
-from rlpyt.samplers.serial.collectors import SerialEvalCollector
 from rlpyt.samplers.async_.collectors import DbCpuResetCollector
-from rlpyt.utils.logging import logger
+from rlpyt.samplers.base import BaseSampler
+from rlpyt.samplers.serial.collectors import SerialEvalCollector
 from rlpyt.utils.collections import AttrDict
+from rlpyt.utils.logging import logger
 
 
 class AsyncSerialSampler(AsyncSamplerMixin, BaseSampler):
@@ -15,10 +14,19 @@ class AsyncSerialSampler(AsyncSamplerMixin, BaseSampler):
     master (training) process, but with no further parallelism.
     """
 
-    def __init__(self, *args, CollectorCls=DbCpuResetCollector,
-            eval_CollectorCls=SerialEvalCollector, **kwargs):
-        super().__init__(*args, CollectorCls=CollectorCls,
-            eval_CollectorCls=eval_CollectorCls, **kwargs)
+    def __init__(
+        self,
+        *args,
+        CollectorCls=DbCpuResetCollector,
+        eval_CollectorCls=SerialEvalCollector,
+        **kwargs
+    ):
+        super().__init__(
+            *args,
+            CollectorCls=CollectorCls,
+            eval_CollectorCls=eval_CollectorCls,
+            **kwargs
+        )
 
     ###########################################################################
     # Sampler runner methods (forked).
@@ -28,7 +36,7 @@ class AsyncSerialSampler(AsyncSamplerMixin, BaseSampler):
         """Initialization inside the main sampler process.  Sets process hardware
         affinities, creates specified number of environment instances and instantiates
         the collector with them.  If applicable, does the same for evaluation
-        environment instances.  Moves the agent to device (could be GPU), and 
+        environment instances.  Moves the agent to device (could be GPU), and
         calls on ``agent.async_cpu()`` initialization.  Starts up collector.
         """
         p = psutil.Process()
@@ -49,8 +57,9 @@ class AsyncSerialSampler(AsyncSamplerMixin, BaseSampler):
             sync=sync,
         )
         if self.eval_n_envs > 0:
-            eval_envs = [self.EnvCls(**self.eval_env_kwargs)
-                for _ in range(self.eval_n_envs)]
+            eval_envs = [
+                self.EnvCls(**self.eval_env_kwargs) for _ in range(self.eval_n_envs)
+            ]
             eval_CollectorCls = self.eval_CollectorCls or SerialEvalCollector
             self.eval_collector = eval_CollectorCls(
                 envs=eval_envs,
@@ -62,8 +71,7 @@ class AsyncSerialSampler(AsyncSamplerMixin, BaseSampler):
         self.agent.to_device(cuda_idx=affinity.get("cuda_idx", None))
         self.agent.async_cpu(share_memory=False)
 
-        agent_inputs, traj_infos = collector.start_envs(
-            self.max_decorrelation_steps)
+        agent_inputs, traj_infos = collector.start_envs(self.max_decorrelation_steps)
         collector.start_agent()
 
         self.collector = collector
@@ -81,7 +89,8 @@ class AsyncSerialSampler(AsyncSamplerMixin, BaseSampler):
         self.agent.recv_shared_memory()
         self.sync.db_idx.value = db_idx  # Tell the collector which buffer.
         agent_inputs, traj_infos, completed_infos = self.collector.collect_batch(
-            self.agent_inputs, self.traj_infos, itr)
+            self.agent_inputs, self.traj_infos, itr
+        )
         self.collector.reset_if_needed(agent_inputs)
         self.agent_inputs = agent_inputs
         self.traj_infos = traj_infos

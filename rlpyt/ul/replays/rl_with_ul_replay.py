@@ -1,31 +1,36 @@
-
 import math
+
 import numpy as np
 
+from rlpyt.algos.utils import discount_return_n_step
 from rlpyt.replays.base import BaseReplayBuffer
-from rlpyt.utils.buffer import (buffer_from_example, get_leading_dims,
-    buffer_func, torchify_buffer)
+from rlpyt.replays.non_sequence.frame import (
+    PrioritizedReplayFrameBuffer,
+    UniformReplayFrameBuffer,
+)
+from rlpyt.replays.sum_tree import SumTree
+from rlpyt.utils.buffer import (
+    buffer_from_example,
+    buffer_func,
+    get_leading_dims,
+    torchify_buffer,
+)
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.misc import extract_sequences
-from rlpyt.replays.sum_tree import SumTree
-from rlpyt.algos.utils import discount_return_n_step
-from rlpyt.replays.non_sequence.frame import (UniformReplayFrameBuffer,
-    PrioritizedReplayFrameBuffer)
 
-SamplesFromReplay = namedarraytuple("SamplesFromReplay",
-    ["observation", "action", "reward", "done"])
+SamplesFromReplay = namedarraytuple(
+    "SamplesFromReplay", ["observation", "action", "reward", "done"]
+)
 
 
 class RlWithUlUniformReplayBuffer(BaseReplayBuffer):
-
     def __init__(self, example, size, B, replay_T):
         self.T = T = math.ceil(size / B)
         self.B = B
         self.size = T * B
         self.t = 0  # cursor
         self.replay_T = replay_T
-        self.samples = buffer_from_example(example, (T, B),
-            share_memory=self.async_)
+        self.samples = buffer_from_example(example, (T, B), share_memory=self.async_)
         self._buffer_full = False
 
     def append_samples(self, samples):
@@ -65,15 +70,17 @@ class RlWithUlUniformReplayBuffer(BaseReplayBuffer):
         return torchify_buffer(batch)
 
     def extract_observation(self, T_idxs, B_idxs, T):
-        return buffer_func(self.samples.observation, extract_sequences,
-            T_idxs, B_idxs, T)
+        return buffer_func(
+            self.samples.observation, extract_sequences, T_idxs, B_idxs, T
+        )
 
 
 class RlWithUlPrioritizedReplayBuffer(BaseReplayBuffer):
     """Replay prioritized by empirical n-step returns: pri = 1 + alpha * return ** beta."""
 
-    def __init__(self, example, size, B, replay_T, discount, n_step_return,
-            alpha, beta):
+    def __init__(
+        self, example, size, B, replay_T, discount, n_step_return, alpha, beta
+    ):
         self.T = T = math.ceil(size / B)
         self.B = B
         self.size = T * B
@@ -83,13 +90,10 @@ class RlWithUlPrioritizedReplayBuffer(BaseReplayBuffer):
         self.n_step_return = n_step_return
         self.alpha = alpha
         self.beta = beta
-        self.samples = buffer_from_example(example, (T, B),
-            share_memory=self.async_)
+        self.samples = buffer_from_example(example, (T, B), share_memory=self.async_)
         if n_step_return > 1:
-            self.samples_return_ = buffer_from_example(example.reward,
-                (T, B))
-            self.samples_done_n = buffer_from_example(example.done,
-                (T, B))
+            self.samples_return_ = buffer_from_example(example.reward, (T, B))
+            self.samples_done_n = buffer_from_example(example.done, (T, B))
         else:
             self.samples_return_ = self.samples.reward
             self.samples_done_n = self.samples.done
@@ -133,21 +137,27 @@ class RlWithUlPrioritizedReplayBuffer(BaseReplayBuffer):
             return_ = np.abs(s.reward[idxs])
             return return_  # return = reward, done_n = done
         if t - nm1 >= 0 and t + T <= self.T:  # No wrap (operate in-place).
-            reward = np.abs(s.reward[t - nm1:t + T])
-            done = s.done[t - nm1:t + T]
-            return_dest = self.samples_return_[t - nm1: t - nm1 + T]
-            done_n_dest = self.samples_done_n[t - nm1: t - nm1 + T]
-            discount_return_n_step(reward, done, n_step=self.n_step_return,
-                discount=self.discount, return_dest=return_dest,
-                done_n_dest=done_n_dest)
+            reward = np.abs(s.reward[t - nm1 : t + T])
+            done = s.done[t - nm1 : t + T]
+            return_dest = self.samples_return_[t - nm1 : t - nm1 + T]
+            done_n_dest = self.samples_done_n[t - nm1 : t - nm1 + T]
+            discount_return_n_step(
+                reward,
+                done,
+                n_step=self.n_step_return,
+                discount=self.discount,
+                return_dest=return_dest,
+                done_n_dest=done_n_dest,
+            )
             return return_dest.copy()
         else:  # Wrap (copies); Let it (wrongly) wrap at first call.
             idxs = np.arange(t - nm1, t + T) % self.T
             reward = np.abs(s.reward[idxs])
             done = s.done[idxs]
             dest_idxs = idxs[:-nm1]
-            return_, done_n = discount_return_n_step(reward, done,
-                n_step=self.n_step_return, discount=self.discount)
+            return_, done_n = discount_return_n_step(
+                reward, done, n_step=self.n_step_return, discount=self.discount
+            )
             self.samples_return_[dest_idxs] = return_
             self.samples_done_n[dest_idxs] = done_n
             return return_
@@ -164,8 +174,7 @@ class RlWithUlPrioritizedReplayBuffer(BaseReplayBuffer):
         )
 
     def sample_idxs(self, batch_B):
-        (T_idxs, B_idxs), priorities = self.priority_tree.sample(batch_B,
-            unique=True)
+        (T_idxs, B_idxs), priorities = self.priority_tree.sample(batch_B, unique=True)
         return T_idxs, B_idxs
 
     def extract_batch(self, T_idxs, B_idxs, T):
@@ -179,8 +188,9 @@ class RlWithUlPrioritizedReplayBuffer(BaseReplayBuffer):
         return torchify_buffer(batch)
 
     def extract_observation(self, T_idxs, B_idxs, T):
-        return buffer_func(self.samples.observation, extract_sequences,
-            T_idxs, B_idxs, T)
+        return buffer_func(
+            self.samples.observation, extract_sequences, T_idxs, B_idxs, T
+        )
 
 
 class RlWithUlPrioritizedReplayWrapper:
@@ -203,8 +213,9 @@ class RlWithUlPrioritizedReplayWrapper:
             return self.replay_buffer.sample_batch(batch_B)
         elif mode == "UL":
             # Prioritized sampling for UL.
-            (T_idxs, B_idxs), priorities = self.priority_tree.sample(batch_B,
-                unique=True)
+            (T_idxs, B_idxs), priorities = self.priority_tree.sample(
+                batch_B, unique=True
+            )
             return self.replay_buffer.extract_batch(T_idxs, B_idxs)
         else:
             raise NotImplementedError
@@ -250,29 +261,40 @@ class RlWithUlPrioritizedReplayWrapper:
             idxs = np.arange(t - nm1, t + T) % self.replay_buffer.T
             return_ = np.abs(self.samples_reward[idxs])
             return return_  # return = reward, done_n = done
-        if t - nm1 >= 0 and t + T <= self.replay_buffer.T:  # No wrap (operate in-place).
-            reward = np.abs(self.samples_reward[t - nm1:t + T])
-            done = self.samples_done[t - nm1:t + T]
-            return_dest = self.samples_return_[t - nm1: t - nm1 + T]
-            done_n_dest = self.samples_done_n[t - nm1: t - nm1 + T]
-            discount_return_n_step(reward, done, n_step=self.n_step_return,
-                discount=self.replay_buffer.discount, return_dest=return_dest,
-                done_n_dest=done_n_dest)
+        if (
+            t - nm1 >= 0 and t + T <= self.replay_buffer.T
+        ):  # No wrap (operate in-place).
+            reward = np.abs(self.samples_reward[t - nm1 : t + T])
+            done = self.samples_done[t - nm1 : t + T]
+            return_dest = self.samples_return_[t - nm1 : t - nm1 + T]
+            done_n_dest = self.samples_done_n[t - nm1 : t - nm1 + T]
+            discount_return_n_step(
+                reward,
+                done,
+                n_step=self.n_step_return,
+                discount=self.replay_buffer.discount,
+                return_dest=return_dest,
+                done_n_dest=done_n_dest,
+            )
             return return_dest.copy()
         else:  # Wrap (copies); Let it (wrongly) wrap at first call.
             idxs = np.arange(t - nm1, t + T) % self.replay_buffer.T
             reward = np.abs(self.samples_reward[idxs])
             done = self.samples_done[idxs]
             dest_idxs = idxs[:-nm1]
-            return_, done_n = discount_return_n_step(reward, done,
-                n_step=self.n_step_return, discount=self.replay_buffer.discount)
+            return_, done_n = discount_return_n_step(
+                reward,
+                done,
+                n_step=self.n_step_return,
+                discount=self.replay_buffer.discount,
+            )
             self.samples_return_[dest_idxs] = return_
             self.samples_done_n[dest_idxs] = done_n
             return return_
 
 
 class DqnWithUlReplayBufferMixin:
-    """Mixes with the replay buffer for DQN. 
+    """Mixes with the replay buffer for DQN.
     No prioritized for now."""
 
     def __init__(self, ul_replay_T, *args, **kwargs):
@@ -311,19 +333,22 @@ class DqnWithUlReplayBufferMixin:
         T dimension.  Frames are returned OLDEST to NEWEST along the C dimension.
 
         Frames are zero-ed after environment resets."""
-        observation = np.empty(shape=(T, len(B_idxs), self.n_frames) +  # [T,B,C,H,W]
-            self.samples_frames.shape[2:], dtype=self.samples_frames.dtype)
+        observation = np.empty(
+            shape=(T, len(B_idxs), self.n_frames)
+            + self.samples_frames.shape[2:],  # [T,B,C,H,W]
+            dtype=self.samples_frames.dtype,
+        )
         fm1 = self.n_frames - 1
         for i, (t, b) in enumerate(zip(T_idxs, B_idxs)):
             if t + T > self.T:  # wrap (n_frames duplicated)
                 m = self.T - t
                 w = T - m
                 for f in range(self.n_frames):
-                    observation[:m, i, f] = self.samples_frames[t + f:t + f + m, b]
-                    observation[m:, i, f] = self.samples_frames[f:w + f, b]
+                    observation[:m, i, f] = self.samples_frames[t + f : t + f + m, b]
+                    observation[m:, i, f] = self.samples_frames[f : w + f, b]
             else:
                 for f in range(self.n_frames):
-                    observation[:, i, f] = self.samples_frames[t + f:t + f + T, b]
+                    observation[:, i, f] = self.samples_frames[t + f : t + f + T, b]
 
             # Populate empty (zero) frames after environment done.
             if t - fm1 < 0 or t + T > self.T:  # Wrap.
@@ -335,17 +360,21 @@ class DqnWithUlReplayBufferMixin:
                 where_done_t = np.where(done_fm1)[0] - fm1  # Might be negative...
                 for f in range(1, self.n_frames):
                     t_blanks = where_done_t + f  # ...might be > T...
-                    t_blanks = t_blanks[(t_blanks >= 0) & (t_blanks < T)]  # ..don't let it wrap.
-                    observation[t_blanks, i, :self.n_frames - f] = 0
+                    t_blanks = t_blanks[
+                        (t_blanks >= 0) & (t_blanks < T)
+                    ]  # ..don't let it wrap.
+                    observation[t_blanks, i, : self.n_frames - f] = 0
 
         return observation
 
 
-class DqnWithUlUniformReplayFrameBuffer(DqnWithUlReplayBufferMixin,
-        UniformReplayFrameBuffer):
+class DqnWithUlUniformReplayFrameBuffer(
+    DqnWithUlReplayBufferMixin, UniformReplayFrameBuffer
+):
     pass
 
 
-class DqnWithUlPrioritizedReplayFrameBuffer(DqnWithUlReplayBufferMixin,
-        PrioritizedReplayFrameBuffer):
+class DqnWithUlPrioritizedReplayFrameBuffer(
+    DqnWithUlReplayBufferMixin, PrioritizedReplayFrameBuffer
+):
     pass

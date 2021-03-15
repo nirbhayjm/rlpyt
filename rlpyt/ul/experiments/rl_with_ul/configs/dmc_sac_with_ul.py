@@ -1,11 +1,10 @@
-
 import copy
 
 configs = dict()
 
 config = dict(
     agent=dict(
-        action_squash=1.,
+        action_squash=1.0,
         pretrain_std=0.75,  # 0.75 gets pretty uniform actions
     ),
     conv=dict(
@@ -51,7 +50,7 @@ config = dict(
         alpha_beta=0.5,
         alpha_init=0.1,
         encoder_update_tau=0.05,
-        random_shift_prob=1.,
+        random_shift_prob=1.0,
         random_shift_pad=4,  # how much to pad on each direction (like DrQ style)
         stop_rl_conv_grad=False,
         min_steps_rl=int(1e4),
@@ -64,15 +63,15 @@ config = dict(
         ul_lr_schedule=None,
         ul_lr_warmup=0,
         ul_batch_size=512,
-        ul_random_shift_prob=1.,
+        ul_random_shift_prob=1.0,
         ul_random_shift_pad=4,
         ul_target_update_interval=1,
         ul_target_update_tau=0.01,
         ul_latent_size=128,
         ul_anchor_hidden_sizes=512,
-        ul_clip_grad_norm=10.,
-        ul_pri_alpha=0.,
-        ul_pri_beta=1.,
+        ul_clip_grad_norm=10.0,
+        ul_pri_alpha=0.0,
+        ul_pri_beta=1.0,
         ul_pri_n_step_return=1,
         ul_use_rl_samples=False,
     ),

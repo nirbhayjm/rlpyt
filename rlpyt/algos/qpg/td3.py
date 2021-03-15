@@ -1,4 +1,3 @@
-
 import torch
 
 from rlpyt.algos.qpg.ddpg import DDPG
@@ -10,16 +9,16 @@ class TD3(DDPG):
     """Twin delayed deep deterministic policy gradient algorithm."""
 
     def __init__(
-            self,
-            batch_size=100,
-            replay_ratio=100,  # data_consumption / data_generation
-            target_update_tau=0.005,
-            target_update_interval=2,
-            policy_update_interval=2,
-            mu_learning_rate=1e-3,
-            q_learning_rate=1e-3,
-            **kwargs
-            ):
+        self,
+        batch_size=100,
+        replay_ratio=100,  # data_consumption / data_generation
+        target_update_tau=0.005,
+        target_update_interval=2,
+        policy_update_interval=2,
+        mu_learning_rate=1e-3,
+        q_learning_rate=1e-3,
+        **kwargs
+    ):
         """Saved input arguments."""
         super().__init__(**kwargs)
         self._batch_size = batch_size
@@ -40,7 +39,8 @@ class TD3(DDPG):
         q1, q2 = self.agent.q(*samples.agent_inputs, samples.action)
         with torch.no_grad():
             target_q1, target_q2 = self.agent.target_q_at_mu(
-                *samples.target_inputs)  # Includes target action noise.
+                *samples.target_inputs
+            )  # Includes target action noise.
             target_q = torch.min(target_q1, target_q2)
         disc = self.discount ** self.n_step_return
         y = samples.return_ + (1 - samples.done_n.float()) * disc * target_q

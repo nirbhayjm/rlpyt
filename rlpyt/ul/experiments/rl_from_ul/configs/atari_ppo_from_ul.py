@@ -1,4 +1,3 @@
-
 import copy
 
 configs = dict()
@@ -13,9 +12,9 @@ config = dict(
     algo=dict(
         discount=0.99,
         learning_rate=2.5e-4,
-        value_loss_coeff=1.,
+        value_loss_coeff=1.0,
         entropy_loss_coeff=0.01,
-        clip_grad_norm=10.,
+        clip_grad_norm=10.0,
         initial_optim_state_dict=None,
         gae_lambda=0.95,
         minibatches=4,

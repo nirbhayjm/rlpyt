@@ -1,16 +1,15 @@
-
 import math
 
-from rlpyt.replays.sequence.n_step import (SequenceNStepReturnBuffer,
-    SamplesFromReplay)
 from rlpyt.replays.async_ import AsyncReplayBufferMixin
-from rlpyt.replays.sum_tree import SumTree, AsyncSumTree
+from rlpyt.replays.sequence.n_step import SamplesFromReplay, SequenceNStepReturnBuffer
+from rlpyt.replays.sum_tree import AsyncSumTree, SumTree
+from rlpyt.utils.buffer import numpify_buffer, torchify_buffer
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.quick_args import save__init__args
-from rlpyt.utils.buffer import torchify_buffer, numpify_buffer
 
-SamplesFromReplayPri = namedarraytuple("SamplesFromReplayPri",
-    SamplesFromReplay._fields + ("is_weights",))
+SamplesFromReplayPri = namedarraytuple(
+    "SamplesFromReplayPri", SamplesFromReplay._fields + ("is_weights",)
+)
 
 
 class PrioritizedSequenceReplay:
@@ -46,8 +45,16 @@ class PrioritizedSequenceReplay:
     pre-allocated buffer.)
     """
 
-    def __init__(self, alpha=0.6, beta=0.4, default_priority=1, unique=False,
-            input_priorities=False, input_priority_shift=0, **kwargs):
+    def __init__(
+        self,
+        alpha=0.6,
+        beta=0.4,
+        default_priority=1,
+        unique=False,
+        input_priorities=False,
+        input_priority_shift=0,
+        **kwargs
+    ):
         super().__init__(**kwargs)
         save__init__args(locals())
         assert self.batch_T is not None, "Must assign fixed batch_T for prioritized."
@@ -55,7 +62,9 @@ class PrioritizedSequenceReplay:
 
     def init_priority_tree(self):
         rsi = max(1, self.rnn_state_interval)
-        off_backward = math.ceil((1 + self.off_backward + self.batch_T) / rsi)  # +1 in case interval aligned? TODO: check
+        off_backward = math.ceil(
+            (1 + self.off_backward + self.batch_T) / rsi
+        )  # +1 in case interval aligned? TODO: check
         SumTreeCls = AsyncSumTree if self.async_ else SumTree
         self.priority_tree = SumTreeCls(
             T=self.T // rsi,
@@ -101,11 +110,12 @@ class PrioritizedSequenceReplay:
         with each sequence sampled randomly according to priority.
         (``self.batch_T`` should not be changed)."""
         (T_idxs, B_idxs), priorities = self.priority_tree.sample(
-            batch_B, unique=self.unique)
+            batch_B, unique=self.unique
+        )
         if self.rnn_state_interval > 1:
             T_idxs = T_idxs * self.rnn_state_interval
         batch = self.extract_batch(T_idxs, B_idxs, self.batch_T)
-        is_weights = (1. / priorities) ** self.beta
+        is_weights = (1.0 / priorities) ** self.beta
         is_weights /= max(is_weights)  # Normalize.
         is_weights = torchify_buffer(is_weights).float()
         return SamplesFromReplayPri(*batch, is_weights=is_weights)
@@ -115,11 +125,13 @@ class PrioritizedSequenceReplay:
         self.priority_tree.update_batch_priorities(priorities ** self.alpha)
 
 
-class PrioritizedSequenceReplayBuffer(PrioritizedSequenceReplay,
-        SequenceNStepReturnBuffer):
+class PrioritizedSequenceReplayBuffer(
+    PrioritizedSequenceReplay, SequenceNStepReturnBuffer
+):
     pass
 
 
-class AsyncPrioritizedSequenceReplayBuffer(AsyncReplayBufferMixin,
-        PrioritizedSequenceReplayBuffer):
+class AsyncPrioritizedSequenceReplayBuffer(
+    AsyncReplayBufferMixin, PrioritizedSequenceReplayBuffer
+):
     pass

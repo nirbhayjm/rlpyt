@@ -1,7 +1,6 @@
-
 import torch
 
-from rlpyt.utils.tensor import to_onehot, from_onehot
+from rlpyt.utils.tensor import from_onehot, to_onehot
 
 
 class DiscreteMixin:

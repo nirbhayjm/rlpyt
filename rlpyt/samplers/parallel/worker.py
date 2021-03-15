@@ -1,11 +1,11 @@
+import time
 
 import psutil
-import time
 import torch
 
 from rlpyt.utils.collections import AttrDict
 from rlpyt.utils.logging import logger
-from rlpyt.utils.seed import set_seed, set_envs_seeds
+from rlpyt.utils.seed import set_envs_seeds, set_seed
 
 
 def initialize_worker(rank, seed=None, cpu=None, torch_threads=None):
@@ -22,8 +22,9 @@ def initialize_worker(rank, seed=None, cpu=None, torch_threads=None):
     except AttributeError:
         cpu_affin = "UNAVAILABLE MacOS"
     log_str += f", CPU affinity {cpu_affin}"
-    torch_threads = (1 if torch_threads is None and cpu is not None else
-        torch_threads)  # Default to 1 to avoid possible MKL hang.
+    torch_threads = (
+        1 if torch_threads is None and cpu is not None else torch_threads
+    )  # Default to 1 to avoid possible MKL hang.
     if torch_threads is not None:
         torch.set_num_threads(torch_threads)
     log_str += f", Torch threads {torch.get_num_threads()}"
@@ -89,10 +90,13 @@ def sampling_process(common_kwargs, worker_kwargs):
         if ctrl.quit.value:
             break
         if ctrl.do_eval.value:
-            eval_collector.collect_evaluation(ctrl.itr.value)  # Traj_infos to queue inside.
+            eval_collector.collect_evaluation(
+                ctrl.itr.value
+            )  # Traj_infos to queue inside.
         else:
             agent_inputs, traj_infos, completed_infos = collector.collect_batch(
-                agent_inputs, traj_infos, ctrl.itr.value)
+                agent_inputs, traj_infos, ctrl.itr.value
+            )
             for info in completed_infos:
                 c.traj_infos_queue.put(info)
         ctrl.barrier_out.wait()

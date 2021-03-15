@@ -1,7 +1,6 @@
-
 from rlpyt.utils.launching.affinity import encode_affinity
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 affinity_code = encode_affinity(
     n_cpu_core=16,
@@ -13,8 +12,7 @@ affinity_code = encode_affinity(
 runs_per_setting = 3
 variant_levels = list()
 
-env_ids = ["Hopper-v3", "HalfCheetah-v3",
-    "Walker2d-v3", "Ant-v3", "Humanoid-v3"]
+env_ids = ["Hopper-v3", "HalfCheetah-v3", "Walker2d-v3", "Ant-v3", "Humanoid-v3"]
 values = list(zip(env_ids))
 dir_names = ["env_{}".format(*v) for v in values]
 keys = [("env", "id")]

@@ -1,4 +1,3 @@
-
 import torch
 
 from rlpyt.models.mlp import MlpModel
@@ -6,7 +5,6 @@ from rlpyt.utils.tensor import infer_leading_dims
 
 
 class ContrastModel(torch.nn.Module):
-
     def __init__(self, latent_size, anchor_hidden_sizes):
         super().__init__()
         if anchor_hidden_sizes is not None:

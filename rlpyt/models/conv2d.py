@@ -1,4 +1,3 @@
-
 import torch
 
 from rlpyt.models.mlp import MlpModel
@@ -12,16 +11,16 @@ class Conv2dModel(torch.nn.Module):
     """
 
     def __init__(
-            self,
-            in_channels,
-            channels,
-            kernel_sizes,
-            strides,
-            paddings=None,
-            nonlinearity=torch.nn.ReLU,  # Module, not Functional.
-            use_maxpool=False,  # if True: convs use stride 1, maxpool downsample.
-            head_sizes=None,  # Put an MLP head on top.
-            ):
+        self,
+        in_channels,
+        channels,
+        kernel_sizes,
+        strides,
+        paddings=None,
+        nonlinearity=torch.nn.ReLU,  # Module, not Functional.
+        use_maxpool=False,  # if True: convs use stride 1, maxpool downsample.
+        head_sizes=None,  # Put an MLP head on top.
+    ):
         super().__init__()
         if paddings is None:
             paddings = [0 for _ in range(len(channels))]
@@ -33,9 +32,14 @@ class Conv2dModel(torch.nn.Module):
             strides = ones
         else:
             maxp_strides = ones
-        conv_layers = [torch.nn.Conv2d(in_channels=ic, out_channels=oc,
-            kernel_size=k, stride=s, padding=p) for (ic, oc, k, s, p) in
-            zip(in_channels, channels, kernel_sizes, strides, paddings)]
+        conv_layers = [
+            torch.nn.Conv2d(
+                in_channels=ic, out_channels=oc, kernel_size=k, stride=s, padding=p
+            )
+            for (ic, oc, k, s, p) in zip(
+                in_channels, channels, kernel_sizes, strides, paddings
+            )
+        ]
         sequence = list()
         for conv_layer, maxp_stride in zip(conv_layers, maxp_strides):
             sequence.extend([conv_layer, nonlinearity()])
@@ -53,8 +57,9 @@ class Conv2dModel(torch.nn.Module):
         without actually performing a forward pass through the model."""
         for child in self.conv.children():
             try:
-                h, w = conv2d_output_shape(h, w, child.kernel_size,
-                    child.stride, child.padding)
+                h, w = conv2d_output_shape(
+                    h, w, child.kernel_size, child.stride, child.padding
+                )
             except AttributeError:
                 pass  # Not a conv or maxpool layer.
             try:
@@ -65,23 +70,23 @@ class Conv2dModel(torch.nn.Module):
 
 
 class Conv2dHeadModel(torch.nn.Module):
-    """Model component composed of a ``Conv2dModel`` component followed by 
+    """Model component composed of a ``Conv2dModel`` component followed by
     a fully-connected ``MlpModel`` head.  Requires full input image shape to
     instantiate the MLP head.
     """
 
     def __init__(
-            self,
-            image_shape,
-            channels,
-            kernel_sizes,
-            strides,
-            hidden_sizes,
-            output_size=None,  # if None: nonlinearity applied to output.
-            paddings=None,
-            nonlinearity=torch.nn.ReLU,
-            use_maxpool=False,
-            ):
+        self,
+        image_shape,
+        channels,
+        kernel_sizes,
+        strides,
+        hidden_sizes,
+        output_size=None,  # if None: nonlinearity applied to output.
+        paddings=None,
+        nonlinearity=torch.nn.ReLU,
+        use_maxpool=False,
+    ):
         super().__init__()
         c, h, w = image_shape
         self.conv = Conv2dModel(
@@ -95,13 +100,18 @@ class Conv2dHeadModel(torch.nn.Module):
         )
         conv_out_size = self.conv.conv_out_size(h, w)
         if hidden_sizes or output_size:
-            self.head = MlpModel(conv_out_size, hidden_sizes,
-                output_size=output_size, nonlinearity=nonlinearity)
+            self.head = MlpModel(
+                conv_out_size,
+                hidden_sizes,
+                output_size=output_size,
+                nonlinearity=nonlinearity,
+            )
             if output_size is not None:
                 self._output_size = output_size
             else:
-                self._output_size = (hidden_sizes if
-                    isinstance(hidden_sizes, int) else hidden_sizes[-1])
+                self._output_size = (
+                    hidden_sizes if isinstance(hidden_sizes, int) else hidden_sizes[-1]
+                )
         else:
             self.head = lambda x: x
             self._output_size = conv_out_size

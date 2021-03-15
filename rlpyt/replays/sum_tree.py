@@ -1,6 +1,6 @@
+import multiprocessing as mp
 
 import numpy as np
-import multiprocessing as mp
 
 from rlpyt.utils.buffer import np_mp_array
 
@@ -15,7 +15,7 @@ class SumTree:
     prev_action or max(1, frames-1) for frame-wise buffer).
     Provides efficient sampling from non-uniform probability masses.
 
-    NOTE: 
+    NOTE:
         Tried single precision (float32) tree, and it sometimes returned
         samples with priority 0.0, because subtraction during tree cascade
         left random value larger than the remaining sum; suggest keeping
@@ -24,11 +24,16 @@ class SumTree:
 
     async_ = False
 
-    def __init__(self, T, B, off_backward, off_forward,
-            default_value=1,
-            enable_input_priorities=False,
-            input_priority_shift=0,  # Does not apply to update_batch_pri.
-            ):
+    def __init__(
+        self,
+        T,
+        B,
+        off_backward,
+        off_forward,
+        default_value=1,
+        enable_input_priorities=False,
+        input_priority_shift=0,  # Does not apply to update_batch_pri.
+    ):
         self.T = T
         self.B = B
         self.size = T * B
@@ -40,7 +45,7 @@ class SumTree:
         self._allocate_tree()
         self.low_idx = 2 ** (self.tree_levels - 1) - 1  # pri_idx + low_idx -> tree_idx
         self.high_idx = self.size + self.low_idx
-        self.priorities = self.tree[self.low_idx:self.high_idx].reshape(T, B)
+        self.priorities = self.tree[self.low_idx : self.high_idx].reshape(T, B)
         if enable_input_priorities:
             self.input_priorities = default_value * np.ones((T, B))
         else:
@@ -99,7 +104,7 @@ class SumTree:
         self.t = (t + T) % self.T
 
     def sample(self, n, unique=False):
-        """Get `n` samples, with replacement (default) or without.  Use 
+        """Get `n` samples, with replacement (default) or without.  Use
         ``np.random.rand()`` to generate random values with which to descend
         the tree to each sampled leaf node. Returns `T_idxs` and `B_idxs`, and sample
         priorities."""
@@ -112,9 +117,13 @@ class SumTree:
                 tree_idxs, unique_idx = np.unique(tree_idxs, return_index=True)
                 scaled_random_values = scaled_random_values[unique_idx]
                 if len(tree_idxs) < n:
-                    new_idxs, new_values = self.find(np.random.rand(2 * (n - len(tree_idxs))))
+                    new_idxs, new_values = self.find(
+                        np.random.rand(2 * (n - len(tree_idxs)))
+                    )
                     tree_idxs = np.concatenate([tree_idxs, new_idxs])
-                    scaled_random_values = np.concatenate([scaled_random_values, new_values])
+                    scaled_random_values = np.concatenate(
+                        [scaled_random_values, new_values]
+                    )
                 else:
                     break
                 i += 1
@@ -132,8 +141,9 @@ class SumTree:
         batch was returned from the ``sample()`` method.
         """
         if not self._sampled_unique:  # Must remove duplicates
-            self.prev_tree_idxs, unique_idxs = np.unique(self.prev_tree_idxs,
-                return_index=True)
+            self.prev_tree_idxs, unique_idxs = np.unique(
+                self.prev_tree_idxs, return_index=True
+            )
             priorities = priorities[unique_idxs]
         self.reconstruct(self.prev_tree_idxs, priorities)
 
@@ -142,7 +152,7 @@ class SumTree:
         levels = range(self.tree_levels) if level is None else [level]
         for k in levels:
             for j in range(2 ** k - 1, 2 ** (k + 1) - 1):
-                print(self.tree[j], end=' ')
+                print(self.tree[j], end=" ")
             print()
 
     # Helpers.
@@ -169,35 +179,51 @@ class SumTree:
             idxs.append(np.arange(low_on_idx, high_on_idx))
         elif high_on_t < low_on_t:  # Wrap
             if self.input_priorities is None:
-                diffs.append(self.default_value - np.concatenate([
-                    self.priorities[low_on_t:], self.priorities[:high_on_t]],
-                    axis=0))
+                diffs.append(
+                    self.default_value
+                    - np.concatenate(
+                        [self.priorities[low_on_t:], self.priorities[:high_on_t]],
+                        axis=0,
+                    )
+                )
                 self.priorities[low_on_t:] = self.default_value
                 self.priorities[:high_on_t] = self.default_value
             else:
                 diffs.append(
                     np.concatenate(
-                        [self.input_priorities[low_on_t:],
-                        self.input_priorities[:high_on_t]], axis=0) -
-                    np.concatenate(
-                        [self.priorities[low_on_t:],
-                        self.priorities[:high_on_t]], axis=0)
+                        [
+                            self.input_priorities[low_on_t:],
+                            self.input_priorities[:high_on_t],
+                        ],
+                        axis=0,
+                    )
+                    - np.concatenate(
+                        [self.priorities[low_on_t:], self.priorities[:high_on_t]],
+                        axis=0,
+                    )
                 )
                 self.priorities[low_on_t:] = self.input_priorities[low_on_t:]
                 self.priorities[:high_on_t] = self.input_priorities[:high_on_t]
-            idxs.extend([np.arange(low_on_idx, self.high_idx),
-                np.arange(self.low_idx, high_on_idx)])
+            idxs.extend(
+                [
+                    np.arange(low_on_idx, self.high_idx),
+                    np.arange(self.low_idx, high_on_idx),
+                ]
+            )
         if high_off_t > low_off_t:
             diffs.append(-self.priorities[low_off_t:high_off_t])
             self.priorities[low_off_t:high_off_t] = 0
             idxs.append(np.arange(low_off_idx, high_off_idx))
         else:  # Wrap.
-            diffs.extend([-self.priorities[low_off_t:],
-                -self.priorities[:high_off_t]])
+            diffs.extend([-self.priorities[low_off_t:], -self.priorities[:high_off_t]])
             self.priorities[low_off_t:] = 0
             self.priorities[:high_off_t] = 0
-            idxs.extend([np.arange(low_off_idx, self.high_idx),
-                np.arange(self.low_idx, high_off_idx)])
+            idxs.extend(
+                [
+                    np.arange(low_off_idx, self.high_idx),
+                    np.arange(self.low_idx, high_off_idx),
+                ]
+            )
         if diffs:
             diffs = np.concatenate(diffs).reshape(-1)
             idxs = np.concatenate(idxs)

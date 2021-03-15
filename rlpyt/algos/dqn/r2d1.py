@@ -1,24 +1,29 @@
-
-import torch
 from collections import namedtuple
 
-from rlpyt.algos.dqn.dqn import DQN, SamplesToBuffer
+import torch
+
 from rlpyt.agents.base import AgentInputs
-from rlpyt.utils.quick_args import save__init__args
-from rlpyt.utils.logging import logger
+from rlpyt.algos.dqn.dqn import DQN, SamplesToBuffer
+from rlpyt.algos.utils import discount_return_n_step, valid_from_done
+from rlpyt.replays.sequence.frame import (
+    AsyncPrioritizedSequenceReplayFrameBuffer,
+    AsyncUniformSequenceReplayFrameBuffer,
+    PrioritizedSequenceReplayFrameBuffer,
+    UniformSequenceReplayFrameBuffer,
+)
+from rlpyt.utils.buffer import buffer_method, buffer_to, torchify_buffer
 from rlpyt.utils.collections import namedarraytuple
-from rlpyt.replays.sequence.frame import (UniformSequenceReplayFrameBuffer,
-    PrioritizedSequenceReplayFrameBuffer, AsyncUniformSequenceReplayFrameBuffer,
-    AsyncPrioritizedSequenceReplayFrameBuffer)
+from rlpyt.utils.logging import logger
+from rlpyt.utils.quick_args import save__init__args
 from rlpyt.utils.tensor import select_at_indexes, valid_mean
-from rlpyt.algos.utils import valid_from_done, discount_return_n_step
-from rlpyt.utils.buffer import buffer_to, buffer_method, torchify_buffer
 
 OptInfo = namedtuple("OptInfo", ["loss", "gradNorm", "tdAbsErr", "priority"])
-SamplesToBufferRnn = namedarraytuple("SamplesToBufferRnn",
-    SamplesToBuffer._fields + ("prev_rnn_state",))
-PrioritiesSamplesToBuffer = namedarraytuple("PrioritiesSamplesToBuffer",
-    ["priorities", "samples"])
+SamplesToBufferRnn = namedarraytuple(
+    "SamplesToBufferRnn", SamplesToBuffer._fields + ("prev_rnn_state",)
+)
+PrioritiesSamplesToBuffer = namedarraytuple(
+    "PrioritiesSamplesToBuffer", ["priorities", "samples"]
+)
 
 
 class R2D1(DQN):
@@ -28,47 +33,47 @@ class R2D1(DQN):
     opt_info_fields = tuple(f for f in OptInfo._fields)  # copy
 
     def __init__(
-            self,
-            discount=0.997,
-            batch_T=80,
-            batch_B=64,
-            warmup_T=40,
-            store_rnn_state_interval=40,  # 0 for none, 1 for all.
-            min_steps_learn=int(1e5),
-            delta_clip=None,  # Typically use squared-error loss (Steven).
-            replay_size=int(1e6),
-            replay_ratio=1,
-            target_update_interval=2500,  # (Steven says 2500 but maybe faster.)
-            n_step_return=5,
-            learning_rate=1e-4,
-            OptimCls=torch.optim.Adam,
-            optim_kwargs=None,
-            initial_optim_state_dict=None,
-            clip_grad_norm=80.,  # 80 (Steven).
-            # eps_init=1,  # NOW IN AGENT.
-            # eps_final=0.1,
-            # eps_final_min=0.0005,
-            # eps_eval=0.001,
-            eps_steps=int(1e6),  # STILL IN ALGO; conver to itr, give to agent.
-            double_dqn=True,
-            prioritized_replay=True,
-            pri_alpha=0.6,
-            pri_beta_init=0.9,
-            pri_beta_final=0.9,
-            pri_beta_steps=int(50e6),
-            pri_eta=0.9,
-            default_priority=None,
-            input_priorities=True,
-            input_priority_shift=None,
-            value_scale_eps=1e-3,  # 1e-3 (Steven).
-            ReplayBufferCls=None,  # leave None to select by above options
-            updates_per_sync=1,  # For async mode only.
-            ):
+        self,
+        discount=0.997,
+        batch_T=80,
+        batch_B=64,
+        warmup_T=40,
+        store_rnn_state_interval=40,  # 0 for none, 1 for all.
+        min_steps_learn=int(1e5),
+        delta_clip=None,  # Typically use squared-error loss (Steven).
+        replay_size=int(1e6),
+        replay_ratio=1,
+        target_update_interval=2500,  # (Steven says 2500 but maybe faster.)
+        n_step_return=5,
+        learning_rate=1e-4,
+        OptimCls=torch.optim.Adam,
+        optim_kwargs=None,
+        initial_optim_state_dict=None,
+        clip_grad_norm=80.0,  # 80 (Steven).
+        # eps_init=1,  # NOW IN AGENT.
+        # eps_final=0.1,
+        # eps_final_min=0.0005,
+        # eps_eval=0.001,
+        eps_steps=int(1e6),  # STILL IN ALGO; conver to itr, give to agent.
+        double_dqn=True,
+        prioritized_replay=True,
+        pri_alpha=0.6,
+        pri_beta_init=0.9,
+        pri_beta_final=0.9,
+        pri_beta_steps=int(50e6),
+        pri_eta=0.9,
+        default_priority=None,
+        input_priorities=True,
+        input_priority_shift=None,
+        value_scale_eps=1e-3,  # 1e-3 (Steven).
+        ReplayBufferCls=None,  # leave None to select by above options
+        updates_per_sync=1,  # For async mode only.
+    ):
         """Saves input arguments.
 
         Args:
             store_rnn_state_interval (int): store RNN state only once this many steps, to reduce memory usage; replay sequences will only begin at the steps with stored recurrent state.
-        
+
         Note:
             Typically ran with ``store_rnn_state_interval`` equal to the sampler's ``batch_T``, 40.  Then every 40 steps
             can be the beginning of a replay sequence, and will be guaranteed to start with a valid RNN state.  Only reset
@@ -77,7 +82,7 @@ class R2D1(DQN):
         if optim_kwargs is None:
             optim_kwargs = dict(eps=1e-3)  # Assumes Adam.
         if default_priority is None:
-            default_priority = delta_clip or 1.
+            default_priority = delta_clip or 1.0
         if input_priority_shift is None:
             input_priority_shift = warmup_T // store_rnn_state_interval
         save__init__args(locals())
@@ -93,7 +98,8 @@ class R2D1(DQN):
             done=examples["done"],
         )
         if self.store_rnn_state_interval > 0:
-            example_to_buffer = SamplesToBufferRnn(*example_to_buffer,
+            example_to_buffer = SamplesToBufferRnn(
+                *example_to_buffer,
                 prev_rnn_state=examples["agent_info"].prev_rnn_state,
             )
         replay_kwargs = dict(
@@ -107,23 +113,33 @@ class R2D1(DQN):
             batch_T=self.batch_T + self.warmup_T,
         )
         if self.prioritized_replay:
-            replay_kwargs.update(dict(
-                alpha=self.pri_alpha,
-                beta=self.pri_beta_init,
-                default_priority=self.default_priority,
-                input_priorities=self.input_priorities,  # True/False.
-                input_priority_shift=self.input_priority_shift,
-            ))
-            ReplayCls = (AsyncPrioritizedSequenceReplayFrameBuffer if async_
-                else PrioritizedSequenceReplayFrameBuffer)
+            replay_kwargs.update(
+                dict(
+                    alpha=self.pri_alpha,
+                    beta=self.pri_beta_init,
+                    default_priority=self.default_priority,
+                    input_priorities=self.input_priorities,  # True/False.
+                    input_priority_shift=self.input_priority_shift,
+                )
+            )
+            ReplayCls = (
+                AsyncPrioritizedSequenceReplayFrameBuffer
+                if async_
+                else PrioritizedSequenceReplayFrameBuffer
+            )
         else:
-            ReplayCls = (AsyncUniformSequenceReplayFrameBuffer if async_
-                else UniformSequenceReplayFrameBuffer)
+            ReplayCls = (
+                AsyncUniformSequenceReplayFrameBuffer
+                if async_
+                else UniformSequenceReplayFrameBuffer
+            )
         if self.ReplayBufferCls is not None:
             ReplayCls = self.ReplayBufferCls
-            logger.log(f"WARNING: ignoring internal selection logic and using"
+            logger.log(
+                f"WARNING: ignoring internal selection logic and using"
                 f" input replay buffer class: {ReplayCls} -- compatibility not"
-                " guaranteed.")
+                " guaranteed."
+            )
         self.replay_buffer = ReplayCls(**replay_kwargs)
         return self.replay_buffer
 
@@ -153,12 +169,15 @@ class R2D1(DQN):
             loss, td_abs_errors, priorities = self.loss(samples_from_replay)
             loss.backward()
             grad_norm = torch.nn.utils.clip_grad_norm_(
-                self.agent.parameters(), self.clip_grad_norm)
+                self.agent.parameters(), self.clip_grad_norm
+            )
             self.optimizer.step()
             if self.prioritized_replay:
                 self.replay_buffer.update_batch_priorities(priorities)
             opt_info.loss.append(loss.item())
-            opt_info.gradNorm.append(torch.tensor(grad_norm).item())  # backwards compatible
+            opt_info.gradNorm.append(
+                torch.tensor(grad_norm).item()
+            )  # backwards compatible
             opt_info.tdAbsErr.extend(td_abs_errors[::8].numpy())
             opt_info.priority.extend(priorities)
             self.update_counter += 1
@@ -170,19 +189,22 @@ class R2D1(DQN):
     def samples_to_buffer(self, samples):
         samples_to_buffer = super().samples_to_buffer(samples)
         if self.store_rnn_state_interval > 0:
-            samples_to_buffer = SamplesToBufferRnn(*samples_to_buffer,
-                prev_rnn_state=samples.agent.agent_info.prev_rnn_state)
+            samples_to_buffer = SamplesToBufferRnn(
+                *samples_to_buffer,
+                prev_rnn_state=samples.agent.agent_info.prev_rnn_state,
+            )
         if self.input_priorities:
             priorities = self.compute_input_priorities(samples)
             samples_to_buffer = PrioritiesSamplesToBuffer(
-                priorities=priorities, samples=samples_to_buffer)
+                priorities=priorities, samples=samples_to_buffer
+            )
         return samples_to_buffer
 
     def compute_input_priorities(self, samples):
         """Used when putting new samples into the replay buffer.  Computes
         n-step TD-errors using recorded Q-values from online network and
         value scaling.  Weights the max and the mean TD-error over each sequence
-        to make a single priority value for that sequence.  
+        to make a single priority value for that sequence.
 
         Note:
             Although the original R2D2 implementation used the entire
@@ -190,7 +212,7 @@ class R2D1(DQN):
             time-step sample batches, and so computed the priority for each
             80-step training sequence based on one of the two 40-step halves.
             Algorithm argument ``input_priority_shift`` determines which 40-step
-            half is used as the priority for the 80-step sequence.  (Since this 
+            half is used as the priority for the 80-step sequence.  (Since this
             method might get executed by alternating memory copiers in async mode,
             don't carry internal state here, do all computation with only the samples
             available in input.  Could probably reduce to one memory copier and keep
@@ -229,8 +251,9 @@ class R2D1(DQN):
         #         self.inv_value_scale(q_max[1:]))
         # )
         nm1 = max(1, self.n_step_return - 1)  # At least 1 bc don't have next Q.
-        y = self.value_scale(return_n +
-            (1 - done_n.float()) * self.inv_value_scale(q_max[nm1:]))
+        y = self.value_scale(
+            return_n + (1 - done_n.float()) * self.inv_value_scale(q_max[nm1:])
+        )
         delta = abs(q_at_a[:-nm1] - y)
         # NOTE: by default, with R2D1, use squared-error loss, delta_clip=None.
         if self.delta_clip is not None:  # Huber loss.
@@ -253,7 +276,8 @@ class R2D1(DQN):
         TD-error over the sequence."""
         all_observation, all_action, all_reward = buffer_to(
             (samples.all_observation, samples.all_action, samples.all_reward),
-            device=self.agent.device)
+            device=self.agent.device,
+        )
         wT, bT, nsr = self.warmup_T, self.batch_T, self.n_step_return
         if wT > 0:
             warmup_slice = slice(None, wT)  # Same for agent and target.
@@ -274,9 +298,9 @@ class R2D1(DQN):
             prev_action=all_action[target_slice],
             prev_reward=all_reward[target_slice],
         )
-        action = samples.all_action[wT + 1:wT + 1 + bT]  # CPU.
-        return_ = samples.return_[wT:wT + bT]
-        done_n = samples.done_n[wT:wT + bT]
+        action = samples.all_action[wT + 1 : wT + 1 + bT]  # CPU.
+        return_ = samples.return_[wT : wT + bT]
+        done_n = samples.done_n[wT : wT + bT]
         if self.store_rnn_state_interval == 0:
             init_rnn_state = None
         else:
@@ -310,8 +334,9 @@ class R2D1(DQN):
             target_q = target_q[-bT:]  # Same length as q.
 
         disc = self.discount ** self.n_step_return
-        y = self.value_scale(return_ + (1 - done_n.float()) * disc *
-            self.inv_value_scale(target_q))  # [T,B]
+        y = self.value_scale(
+            return_ + (1 - done_n.float()) * disc * self.inv_value_scale(target_q)
+        )  # [T,B]
         delta = y - q
         losses = 0.5 * delta ** 2
         abs_delta = abs(delta)
@@ -335,11 +360,21 @@ class R2D1(DQN):
 
     def value_scale(self, x):
         """Value scaling function to handle raw rewards across games (not clipped)."""
-        return (torch.sign(x) * (torch.sqrt(abs(x) + 1) - 1) +
-            self.value_scale_eps * x)
+        return torch.sign(x) * (torch.sqrt(abs(x) + 1) - 1) + self.value_scale_eps * x
 
     def inv_value_scale(self, z):
         """Invert the value scaling."""
-        return torch.sign(z) * (((torch.sqrt(1 + 4 * self.value_scale_eps *
-            (abs(z) + 1 + self.value_scale_eps)) - 1) /
-            (2 * self.value_scale_eps)) ** 2 - 1)
+        return torch.sign(z) * (
+            (
+                (
+                    torch.sqrt(
+                        1
+                        + 4 * self.value_scale_eps * (abs(z) + 1 + self.value_scale_eps)
+                    )
+                    - 1
+                )
+                / (2 * self.value_scale_eps)
+            )
+            ** 2
+            - 1
+        )

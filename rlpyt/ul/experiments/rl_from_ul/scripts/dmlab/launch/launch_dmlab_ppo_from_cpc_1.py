@@ -1,10 +1,9 @@
-
-import sys
 import copy
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2
@@ -64,17 +63,20 @@ n_steps = [25e6]
 pretrain_algos = ["CPC"]
 replays = ["20200807/dmlab_replaysave_1"]
 model_dirs = ["/data/adam/ul4rl/models/20200826/dmlab_cpc_pretrain_1/"]
-values = list(zip(
-    n_steps, 
-    pretrain_algos, 
-    replays, 
-    model_dirs,
-))
+values = list(
+    zip(
+        n_steps,
+        pretrain_algos,
+        replays,
+        model_dirs,
+    )
+)
 dir_names = ["RlFromUl"]  # TRAIN SCRIPT SPLITS OFF THIS
-keys = [("runner", "n_steps"),
-    ("pretrain", "algo"), 
+keys = [
+    ("runner", "n_steps"),
+    ("pretrain", "algo"),
     ("pretrain", "replay"),
-    ("pretrain", "model_dir"), 
+    ("pretrain", "model_dir"),
 ]
 variant_levels_1.append(VariantLevel(keys, values, dir_names))
 

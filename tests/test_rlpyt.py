@@ -1,8 +1,8 @@
-from rlpyt.samplers.serial.sampler import SerialSampler
-from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
-from rlpyt.algos.dqn.dqn import DQN
 from rlpyt.agents.dqn.atari.atari_dqn_agent import AtariDqnAgent
+from rlpyt.algos.dqn.dqn import DQN
+from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 from rlpyt.runners.minibatch_rl import MinibatchRl
+from rlpyt.samplers.serial.sampler import SerialSampler
 from rlpyt.utils.logging.context import logger_context
 
 
@@ -24,8 +24,7 @@ def test_rlpyt_simple():
         eval_max_steps=int(10e3),
         eval_max_trajectories=5,
     )
-    algo = DQN(min_steps_learn=1e3,
-               replay_size=1e3)  # remove memory issues
+    algo = DQN(min_steps_learn=1e3, replay_size=1e3)  # remove memory issues
     agent = AtariDqnAgent()
     runner = MinibatchRl(
         algo=algo,

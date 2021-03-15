@@ -1,13 +1,11 @@
-
 import numpy as np
 
-from rlpyt.replays.sequence.n_step import SequenceNStepReturnBuffer
 from rlpyt.replays.async_ import AsyncReplayBufferMixin
+from rlpyt.replays.sequence.n_step import SequenceNStepReturnBuffer
 
 
 class UniformSequenceReplay:
-    """Replays sequences with starting state chosen uniformly randomly.
-    """
+    """Replays sequences with starting state chosen uniformly randomly."""
 
     def set_batch_T(self, batch_T):
         self.batch_T = batch_T  # Can set dynamically, or input to sample_batch.
@@ -39,11 +37,11 @@ class UniformSequenceReplay:
         return T_idxs, B_idxs
 
 
-class UniformSequenceReplayBuffer(UniformSequenceReplay,
-        SequenceNStepReturnBuffer):
+class UniformSequenceReplayBuffer(UniformSequenceReplay, SequenceNStepReturnBuffer):
     pass
 
 
-class AsyncUniformSequenceReplayBuffer(AsyncReplayBufferMixin,
-        UniformSequenceReplayBuffer):
+class AsyncUniformSequenceReplayBuffer(
+    AsyncReplayBufferMixin, UniformSequenceReplayBuffer
+):
     pass

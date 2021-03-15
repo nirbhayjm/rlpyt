@@ -1,6 +1,6 @@
-
 import numpy as np
 import torch
+
 # import cv2
 # import copy
 # from scipy.ndimage.filters import gaussian_filter
@@ -16,6 +16,7 @@ def numpify(func):
     array, but if the input `imgs` is a torch tensor, a torch tensor will be
     returned. Assumes first input and first output of the function is the
     images array/tensor, and only operates on that."""
+
     def numpified_aug(imgs, *args, **kwargs):
         _numpify = isinstance(imgs, torch.Tensor)
         if _numpify:
@@ -28,6 +29,7 @@ def numpify(func):
             else:
                 ret = torch.from_numpy(ret)
         return ret
+
     return numpified_aug
 
 
@@ -37,7 +39,7 @@ def numpify(func):
 
 
 @numpify
-def subpixel_shift(imgs, max_shift=1.):
+def subpixel_shift(imgs, max_shift=1.0):
     """
     Pad input images by 1 using "edge" mode, and then do a nearest-neighbor
     averaging scheme, centered at a random location for each image, up to
@@ -46,33 +48,35 @@ def subpixel_shift(imgs, max_shift=1.):
     """
     if imgs.dtype == np.uint8:
         raise NotImplementedError
-    assert max_shift <= 1.
+    assert max_shift <= 1.0
     b, c, h, w = imgs.shape
     padded = np.pad(
         imgs,
         pad_width=((0, 0), (0, 0), (1, 1), (1, 1)),
         mode="edge",
     )
-    xx = np.array([[-1., 0., 1.]])  # [1,3]
+    xx = np.array([[-1.0, 0.0, 1.0]])  # [1,3]
 
     rand_x = max_shift * (2 * np.random.rand(b, 1) - 1)  # [B,1]
     rand_y = max_shift * (2 * np.random.rand(b, 1) - 1)  # [B,1]
 
-    wx = np.maximum(0., 1 - np.abs(xx - rand_x))  # [B,3]
-    wy = np.maximum(0., 1 - np.abs(xx - rand_y))  # [B,3]
+    wx = np.maximum(0.0, 1 - np.abs(xx - rand_x))  # [B,3]
+    wy = np.maximum(0.0, 1 - np.abs(xx - rand_y))  # [B,3]
     weight = wx.reshape(b, 1, 3) * wy.reshape(b, 3, 1)  # [B,1,3]x[B,3,1]->[B,3,3]
 
     shifted = np.zeros_like(imgs)
     for dy in [0, 1, 2]:
         for dx in [0, 1, 2]:
-            shifted += (weight[:, dy, dx].reshape(-1, 1, 1, 1) *
-                padded[:, :, dy:h + dy, dx:w + dx])
+            shifted += (
+                weight[:, dy, dx].reshape(-1, 1, 1, 1)
+                * padded[:, :, dy : h + dy, dx : w + dx]
+            )
 
     return shifted
 
 
 @numpify
-def random_shift(imgs, pad=1, prob=1.):
+def random_shift(imgs, pad=1, prob=1.0):
     t = b = c = 1
     shape_len = len(imgs.shape)
     if shape_len == 2:  # Could also make all this logic into a wrapper.
@@ -103,14 +107,14 @@ def random_shift(imgs, pad=1, prob=1.):
     w_max = w - crop_w + 1
     h1s = np.random.randint(0, h_max, b)
     w1s = np.random.randint(0, w_max, b)
-    if prob < 1.:
+    if prob < 1.0:
         which_no_crop = np.random.rand(b) > prob
         h1s[which_no_crop] = pad
         w1s[which_no_crop] = pad
 
     shifted = np.zeros_like(imgs)
     for i, (pad_img, h1, w1) in enumerate(zip(padded, h1s, w1s)):
-        shifted[i] = pad_img[:, h1:h1 + crop_h, w1:w1 + crop_w]
+        shifted[i] = pad_img[:, h1 : h1 + crop_h, w1 : w1 + crop_w]
 
     if shape_len == 2:
         shifted = shifted.reshape(crop_h, crop_w)

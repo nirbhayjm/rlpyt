@@ -1,15 +1,27 @@
-
 import multiprocessing as mp
+
 import numpy as np
 
-from rlpyt.utils.buffer import buffer_from_example, torchify_buffer
 from rlpyt.agents.base import AgentInputs
-from rlpyt.samplers.collections import (Samples, AgentSamples, AgentSamplesBsv,
-    EnvSamples)
+from rlpyt.samplers.collections import (
+    AgentSamples,
+    AgentSamplesBsv,
+    EnvSamples,
+    Samples,
+)
+from rlpyt.utils.buffer import buffer_from_example, torchify_buffer
 
 
-def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
-        agent_shared=True, env_shared=True, subprocess=True, examples=None):
+def build_samples_buffer(
+    agent,
+    env,
+    batch_spec,
+    bootstrap_value=False,
+    agent_shared=True,
+    env_shared=True,
+    subprocess=True,
+    examples=None,
+):
     """Recommended to step/reset agent and env in subprocess, so it doesn't
     affect settings in master before forking workers (e.g. torch num_threads
     (MKL) may be set at first forward computation.)"""
@@ -17,8 +29,9 @@ def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
         if subprocess:
             mgr = mp.Manager()
             examples = mgr.dict()  # Examples pickled back to master.
-            w = mp.Process(target=get_example_outputs,
-                args=(agent, env, examples, subprocess))
+            w = mp.Process(
+                target=get_example_outputs, args=(agent, env, examples, subprocess)
+            )
             w.start()
             w.join()
         else:
@@ -62,6 +75,7 @@ def get_example_outputs(agent, env, examples, subprocess=False):
     MKL)."""
     if subprocess:  # i.e. in subprocess.
         import torch
+
         torch.set_num_threads(1)  # Some fix to prevent MKL hang.
     o = env.reset()
     a = env.action_space.sample()

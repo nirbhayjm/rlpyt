@@ -1,10 +1,8 @@
-
 import torch
 
 from rlpyt.algos.dqn.dqn import DQN
-from rlpyt.utils.tensor import select_at_indexes, valid_mean
 from rlpyt.algos.utils import valid_from_done
-
+from rlpyt.utils.tensor import select_at_indexes, valid_mean
 
 EPS = 1e-6  # (NaN-guard)
 
@@ -35,7 +33,7 @@ class CategoricalDQN(DQN):
         """
         Computes the Distributional Q-learning loss, based on projecting the
         discounted rewards + target Q-distribution into the current Q-domain,
-        with cross-entropy loss.  
+        with cross-entropy loss.
 
         Returns loss and KL-divergence-errors for use in prioritization.
         """
@@ -79,8 +77,9 @@ class CategoricalDQN(DQN):
             losses *= samples.is_weights
 
         target_p = torch.clamp(target_p, EPS, 1)
-        KL_div = torch.sum(target_p *
-            (torch.log(target_p) - torch.log(p.detach())), dim=1)
+        KL_div = torch.sum(
+            target_p * (torch.log(target_p) - torch.log(p.detach())), dim=1
+        )
         KL_div = torch.clamp(KL_div, EPS, 1 / EPS)  # Avoid <0 from NaN-guard.
 
         if not self.mid_batch_reset:

@@ -1,13 +1,14 @@
-
 import numpy as np
 
-from rlpyt.samplers.parallel.gpu.action_server import (ActionServer,
-    AlternatingActionServer, NoOverlapAlternatingActionServer)
 from rlpyt.agents.base import AgentInputs
+from rlpyt.samplers.parallel.gpu.action_server import (
+    ActionServer,
+    AlternatingActionServer,
+    NoOverlapAlternatingActionServer,
+)
 
 
 class AsyncActionServer(ActionServer):
-
     def serve_actions_evaluation(self, itr):
         """Similar to normal action-server, but with different signaling logic
         for ending evaluation early; receive signal from main sampler process
@@ -16,8 +17,9 @@ class AsyncActionServer(ActionServer):
         obs_ready, act_ready = self.sync.obs_ready, self.sync.act_ready
         step_np, step_pyt = self.eval_step_buffer_np, self.eval_step_buffer_pyt
         self.agent.reset()
-        agent_inputs = AgentInputs(step_pyt.observation, step_pyt.action,
-            step_pyt.reward)  # Fixed buffer objects.
+        agent_inputs = AgentInputs(
+            step_pyt.observation, step_pyt.action, step_pyt.reward
+        )  # Fixed buffer objects.
 
         for t in range(self.eval_max_T):
             for b in obs_ready:
@@ -44,7 +46,6 @@ class AsyncActionServer(ActionServer):
 
 
 class AsyncAlternatingActionServer(AlternatingActionServer):
-
     def serve_actions_evaluation(self, itr):
         """Similar to normal action-server, but with different signaling logic
         for ending evaluation early; receive signal from main sampler process
@@ -92,7 +93,6 @@ class AsyncAlternatingActionServer(AlternatingActionServer):
             assert not b.acquire(block=False)  # Debug check.
         for w in act_ready:
             assert not w.acquire(block=False)  # Debug check.
-
 
 
 class AsyncNoOverlapAlternatingActionServer(NoOverlapAlternatingActionServer):

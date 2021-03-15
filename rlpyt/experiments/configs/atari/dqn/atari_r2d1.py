@@ -1,4 +1,3 @@
-
 import copy
 
 configs = dict()
@@ -15,7 +14,7 @@ config = dict(
         store_rnn_state_interval=40,
         replay_ratio=4,  # In the paper, more like 0.8.
         learning_rate=1e-4,
-        clip_grad_norm=80.,  # 80 (Steven.)
+        clip_grad_norm=80.0,  # 80 (Steven.)
         min_steps_learn=int(1e5),
         double_dqn=True,
         prioritized_replay=True,
@@ -64,10 +63,14 @@ config["algo"]["replay_ratio"] = 1
 # config["algo"]["eps_final"] = 0.1  # Now in agent.
 # config["algo"]["eps_final_min"] = 0.0005
 config["agent"]["eps_final"] = 0.1  # (Steven: 0.4 - 0.4 ** 8 =0.00065)
-config["agent"]["eps_final_min"] = 0.0005  # (Steven: approx log space but doesn't matter)
+config["agent"][
+    "eps_final_min"
+] = 0.0005  # (Steven: approx log space but doesn't matter)
 config["runner"]["n_steps"] = 20e9
 config["runner"]["log_interval_steps"] = 10e6
-config["sampler"]["batch_T"] = 40  # = warmup_T = store_rnn_interval; new traj at boundary.
+config["sampler"][
+    "batch_T"
+] = 40  # = warmup_T = store_rnn_interval; new traj at boundary.
 config["sampler"]["batch_B"] = 192  # to make one update per sample batch.
 config["sampler"]["eval_n_envs"] = 6  # 6 cpus, 6 * 32 = 192, for pabti.
 config["sampler"]["eval_max_steps"] = int(28e3 * 6)
@@ -129,29 +132,45 @@ configs["r2d1_test"] = config
 
 
 config = copy.deepcopy(configs["async_gpu"])
-config["sampler"]["batch_B"] = 264  # For using full maching with 2 gpu sampler, 1 gpu opt.
+config["sampler"][
+    "batch_B"
+] = 264  # For using full maching with 2 gpu sampler, 1 gpu opt.
 config["sampler"]["eval_n_envs"] = 44
 config["sampler"]["eval_max_steps"] = int(44 * 28e3)  # At least one full length.
-config["sampler"]["eval_max_trajectories"] = 120  # Try not to bias towards shorter ones.
+config["sampler"][
+    "eval_max_trajectories"
+] = 120  # Try not to bias towards shorter ones.
 configs["async_alt_pabti"] = config
 
 config = copy.deepcopy(configs["async_gpu"])
-config["sampler"]["batch_B"] = 312  # For using full maching with 3 gpu sampler, 1 gpu opt.
+config["sampler"][
+    "batch_B"
+] = 312  # For using full maching with 3 gpu sampler, 1 gpu opt.
 config["sampler"]["eval_n_envs"] = 78
 config["sampler"]["eval_max_steps"] = int(78 * 28e3)  # At least one full length.
-config["sampler"]["eval_max_trajectories"] = 210  # Try not to bias towards shorter ones.
+config["sampler"][
+    "eval_max_trajectories"
+] = 210  # Try not to bias towards shorter ones.
 configs["async_alt_dgx"] = config
 
 config = copy.deepcopy(configs["async_gpu"])
-config["sampler"]["batch_B"] = 252  # For using full maching with 2 gpu sampler, 1 gpu opt.
+config["sampler"][
+    "batch_B"
+] = 252  # For using full maching with 2 gpu sampler, 1 gpu opt.
 config["sampler"]["eval_n_envs"] = 36
 config["sampler"]["eval_max_steps"] = int(36 * 28e3)  # At least one full length.
-config["sampler"]["eval_max_trajectories"] = 100  # Try not to bias towards shorter ones.
+config["sampler"][
+    "eval_max_trajectories"
+] = 100  # Try not to bias towards shorter ones.
 configs["async_alt_got"] = config
 
 config = copy.deepcopy(configs["async_gpu"])
-config["sampler"]["batch_B"] = 312  # For using full maching with 3 gpu sampler, 1 gpu opt.
+config["sampler"][
+    "batch_B"
+] = 312  # For using full maching with 3 gpu sampler, 1 gpu opt.
 config["sampler"]["eval_n_envs"] = 39
 config["sampler"]["eval_max_steps"] = int(39 * 28e3)  # At least one full length.
-config["sampler"]["eval_max_trajectories"] = 210  # Try not to bias towards shorter ones.
+config["sampler"][
+    "eval_max_trajectories"
+] = 210  # Try not to bias towards shorter ones.
 configs["async_gpu_dgx"] = config

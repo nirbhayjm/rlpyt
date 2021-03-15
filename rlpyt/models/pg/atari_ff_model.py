@@ -1,9 +1,8 @@
-
 import torch
 import torch.nn.functional as F
 
-from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.models.conv2d import Conv2dHeadModel
+from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
 
 class AtariFfModel(torch.nn.Module):
@@ -13,16 +12,16 @@ class AtariFfModel(torch.nn.Module):
     """
 
     def __init__(
-            self,
-            image_shape,
-            output_size,
-            fc_sizes=512,
-            use_maxpool=False,
-            channels=None,  # None uses default.
-            kernel_sizes=None,
-            strides=None,
-            paddings=None,
-            ):
+        self,
+        image_shape,
+        output_size,
+        fc_sizes=512,
+        use_maxpool=False,
+        channels=None,  # None uses default.
+        kernel_sizes=None,
+        strides=None,
+        paddings=None,
+    ):
         """Instantiate neural net module according to inputs."""
         super().__init__()
         self.conv = Conv2dHeadModel(
@@ -48,7 +47,7 @@ class AtariFfModel(torch.nn.Module):
         via the agent).
         """
         img = image.type(torch.float)  # Expect torch.uint8 inputs
-        img = img.mul_(1. / 255)  # From [0-255] to [0-1], in place.
+        img = img.mul_(1.0 / 255)  # From [0-255] to [0-1], in place.
 
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
         lead_dim, T, B, img_shape = infer_leading_dims(img, 3)

@@ -1,4 +1,3 @@
-
 import torch
 import torch.nn.functional as F
 
@@ -10,12 +9,12 @@ class DmlabConv2dModel(torch.nn.Module):
     # A more hard-coded version, easier to work with.
 
     def __init__(
-            self,
-            in_channels,
-            use_fourth_layer=True,
-            skip_connections=True,
-            use_maxpool=False,
-            ):
+        self,
+        in_channels,
+        use_fourth_layer=True,
+        skip_connections=True,
+        use_maxpool=False,
+    ):
         super().__init__()
 
         self.conv1 = torch.nn.Conv2d(
@@ -25,7 +24,9 @@ class DmlabConv2dModel(torch.nn.Module):
             stride=1 if use_maxpool else 4,
             padding=2 if use_maxpool else 0,
         )
-        self.maxpool1 = torch.nn.MaxPool2d(kernel_size=4, stride=4) if use_maxpool else None
+        self.maxpool1 = (
+            torch.nn.MaxPool2d(kernel_size=4, stride=4) if use_maxpool else None
+        )
         self.conv2 = torch.nn.Conv2d(
             in_channels=32,
             out_channels=64,
@@ -33,7 +34,9 @@ class DmlabConv2dModel(torch.nn.Module):
             stride=1 if use_maxpool else 2,
             padding=1 if use_maxpool else 0,
         )
-        self.maxpool2 = torch.nn.MaxPool2d(kernel_size=2, stride=2) if use_maxpool else None
+        self.maxpool2 = (
+            torch.nn.MaxPool2d(kernel_size=2, stride=2) if use_maxpool else None
+        )
         self.conv3 = torch.nn.Conv2d(
             in_channels=64,
             out_channels=64,
@@ -90,8 +93,9 @@ class DmlabConv2dModel(torch.nn.Module):
         without actually performing a forward pass through the model."""
         for child in self.children():
             try:
-                h, w = conv2d_output_shape(h, w, child.kernel_size,
-                    child.stride, child.padding)
+                h, w = conv2d_output_shape(
+                    h, w, child.kernel_size, child.stride, child.padding
+                )
             except AttributeError:
                 pass  # Not a conv or maxpool layer.
             try:
@@ -105,4 +109,3 @@ class DmlabConv2dModel(torch.nn.Module):
         without actually performing a forward pass through the model."""
         c, h, w = self.output_shape(h=h, w=w, c=c)
         return c * h * w
-    

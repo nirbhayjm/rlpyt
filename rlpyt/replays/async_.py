@@ -1,6 +1,5 @@
-
-import multiprocessing as mp
 import ctypes
+import multiprocessing as mp
 
 from rlpyt.utils.synchronize import RWLock
 

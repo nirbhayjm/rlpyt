@@ -1,4 +1,3 @@
-
 import multiprocessing as mp
 import queue
 
@@ -80,6 +79,7 @@ def find_port(offset):
     """Find a unique open port, for initializing `torch.distributed` in
     multiple separate multi-GPU runs on one machine."""
     import torch.distributed
+
     assert offset < 100
     for port in range(29500 + offset, 65000, 100):
         try:

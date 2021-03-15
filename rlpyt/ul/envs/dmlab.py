@@ -1,31 +1,30 @@
-
 import os
 import os.path as osp
 import shutil
-import numpy as np
-import deepmind_lab
 from collections import deque
 
+import numpy as np
+
+import deepmind_lab
 from rlpyt.envs.base import Env
 from rlpyt.spaces.int_box import IntBox
 
 
 class DmlabEnv(Env):
-
     def __init__(
-            self,
-            level,
-            height=72,
-            width=96,
-            action_repeat=4,
-            frame_history=1,
-            renderer="hardware",
-            fps=None,
-            episode_length_seconds=None,
-            config_kwargs=None,
-            cache_dir="/data/adam/dmlab_cache",
-            gpu_device_index="EGL_DEVICE_ID",
-            ):
+        self,
+        level,
+        height=72,
+        width=96,
+        action_repeat=4,
+        frame_history=1,
+        renderer="hardware",
+        fps=None,
+        episode_length_seconds=None,
+        config_kwargs=None,
+        cache_dir="/data/adam/dmlab_cache",
+        gpu_device_index="EGL_DEVICE_ID",
+    ):
         if level in DMLAB30:
             level = "/contributed/dmlab30/" + level
         level_cache = None if cache_dir is None else LevelCache(cache_dir)
@@ -42,8 +41,10 @@ class DmlabEnv(Env):
             config["gpuDeviceIndex"] = gpu_device_index
         if config_kwargs is not None:
             if config.keys() & config_kwargs.keys():
-                raise KeyError(f"Had duplicate key(s) in config_kwargs: "
-                    f"{config.keys() & config_kwargs.keys()}")
+                raise KeyError(
+                    f"Had duplicate key(s) in config_kwargs: "
+                    f"{config.keys() & config_kwargs.keys()}"
+                )
             config.update(config_kwargs)
         self.dmlab_env = deepmind_lab.Lab(
             level=level,
@@ -52,20 +53,24 @@ class DmlabEnv(Env):
             renderer=renderer,
             level_cache=level_cache,
         )
-        self._action_map = np.array([ 
-            [  0, 0,  0,  1, 0, 0, 0],  # Forward
-            [  0, 0,  0, -1, 0, 0, 0],  # Backward
-            [  0, 0, -1,  0, 0, 0, 0],  # Move Left
-            [  0, 0,  1,  0, 0, 0, 0],  # Move Right
-            [-20, 0,  0,  0, 0, 0, 0],  # Look Left
-            [ 20, 0,  0,  0, 0, 0, 0],  # Look Right
-            [-20, 0,  0,  1, 0, 0, 0],  # Left Forward
-            [ 20, 0,  0,  1, 0, 0, 0],  # Right Forward
-            [  0, 0,  0,  0, 1, 0, 0],  # Fire
-                                     ], dtype=np.int32)
+        self._action_map = np.array(
+            [
+                [0, 0, 0, 1, 0, 0, 0],  # Forward
+                [0, 0, 0, -1, 0, 0, 0],  # Backward
+                [0, 0, -1, 0, 0, 0, 0],  # Move Left
+                [0, 0, 1, 0, 0, 0, 0],  # Move Right
+                [-20, 0, 0, 0, 0, 0, 0],  # Look Left
+                [20, 0, 0, 0, 0, 0, 0],  # Look Right
+                [-20, 0, 0, 1, 0, 0, 0],  # Left Forward
+                [20, 0, 0, 1, 0, 0, 0],  # Right Forward
+                [0, 0, 0, 0, 1, 0, 0],  # Fire
+            ],
+            dtype=np.int32,
+        )
         self._action_space = IntBox(low=0, high=len(self._action_map))
-        self._observation_space = IntBox(low=0, high=256,
-            shape=(3 * frame_history, height, width), dtype=np.uint8)
+        self._observation_space = IntBox(
+            low=0, high=256, shape=(3 * frame_history, height, width), dtype=np.uint8
+        )
         self._zero_obs = np.zeros((3, height, width), dtype=np.uint8)
         if frame_history > 1:
             self._obs_deque = deque(maxlen=frame_history)
@@ -80,8 +85,9 @@ class DmlabEnv(Env):
         return obs
 
     def step(self, action):
-        reward = self.dmlab_env.step(self._action_map[action],
-            num_steps=self._action_repeat)
+        reward = self.dmlab_env.step(
+            self._action_map[action], num_steps=self._action_repeat
+        )
         obs, done = self.update_obs()
         return obs, reward, done, ()  # Might need to make dummy namedtuple?
 

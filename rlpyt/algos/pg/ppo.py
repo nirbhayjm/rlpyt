@@ -1,16 +1,17 @@
-
 import torch
 
-from rlpyt.algos.pg.base import PolicyGradientAlgo, OptInfo
 from rlpyt.agents.base import AgentInputs, AgentInputsRnn
-from rlpyt.utils.tensor import valid_mean
-from rlpyt.utils.quick_args import save__init__args
-from rlpyt.utils.buffer import buffer_to, buffer_method
+from rlpyt.algos.pg.base import OptInfo, PolicyGradientAlgo
+from rlpyt.utils.buffer import buffer_method, buffer_to
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.misc import iterate_mb_idxs
+from rlpyt.utils.quick_args import save__init__args
+from rlpyt.utils.tensor import valid_mean
 
-LossInputs = namedarraytuple("LossInputs",
-    ["agent_inputs", "action", "return_", "advantage", "valid", "old_dist_info"])
+LossInputs = namedarraytuple(
+    "LossInputs",
+    ["agent_inputs", "action", "return_", "advantage", "valid", "old_dist_info"],
+)
 
 
 class PPO(PolicyGradientAlgo):
@@ -22,22 +23,22 @@ class PPO(PolicyGradientAlgo):
     """
 
     def __init__(
-            self,
-            discount=0.99,
-            learning_rate=0.001,
-            value_loss_coeff=1.,
-            entropy_loss_coeff=0.01,
-            OptimCls=torch.optim.Adam,
-            optim_kwargs=None,
-            clip_grad_norm=1.,
-            initial_optim_state_dict=None,
-            gae_lambda=1,
-            minibatches=4,
-            epochs=4,
-            ratio_clip=0.1,
-            linear_lr_schedule=True,
-            normalize_advantage=False,
-            ):
+        self,
+        discount=0.99,
+        learning_rate=0.001,
+        value_loss_coeff=1.0,
+        entropy_loss_coeff=0.01,
+        OptimCls=torch.optim.Adam,
+        optim_kwargs=None,
+        clip_grad_norm=1.0,
+        initial_optim_state_dict=None,
+        gae_lambda=1,
+        minibatches=4,
+        epochs=4,
+        ratio_clip=0.1,
+        linear_lr_schedule=True,
+        normalize_advantage=False,
+    ):
         """Saves input settings."""
         if optim_kwargs is None:
             optim_kwargs = dict()
@@ -53,7 +54,8 @@ class PPO(PolicyGradientAlgo):
         if self.linear_lr_schedule:
             self.lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
                 optimizer=self.optimizer,
-                lr_lambda=lambda itr: (self.n_itr - itr) / self.n_itr)  # Step once per itr.
+                lr_lambda=lambda itr: (self.n_itr - itr) / self.n_itr,
+            )  # Step once per itr.
             self._ratio_clip = self.ratio_clip  # Save base value.
 
     def optimize_agent(self, itr, samples):
@@ -97,14 +99,18 @@ class PPO(PolicyGradientAlgo):
                 rnn_state = init_rnn_state[B_idxs] if recurrent else None
                 # NOTE: if not recurrent, will lose leading T dim, should be OK.
                 loss, entropy, perplexity = self.loss(
-                    *loss_inputs[T_idxs, B_idxs], rnn_state)
+                    *loss_inputs[T_idxs, B_idxs], rnn_state
+                )
                 loss.backward()
                 grad_norm = torch.nn.utils.clip_grad_norm_(
-                    self.agent.parameters(), self.clip_grad_norm)
+                    self.agent.parameters(), self.clip_grad_norm
+                )
                 self.optimizer.step()
 
                 opt_info.loss.append(loss.item())
-                opt_info.gradNorm.append(torch.tensor(grad_norm).item())  # backwards compatible
+                opt_info.gradNorm.append(
+                    torch.tensor(grad_norm).item()
+                )  # backwards compatible
                 opt_info.entropy.append(entropy.item())
                 opt_info.perplexity.append(perplexity.item())
                 self.update_counter += 1
@@ -114,8 +120,16 @@ class PPO(PolicyGradientAlgo):
 
         return opt_info
 
-    def loss(self, agent_inputs, action, return_, advantage, valid, old_dist_info,
-            init_rnn_state=None):
+    def loss(
+        self,
+        agent_inputs,
+        action,
+        return_,
+        advantage,
+        valid,
+        old_dist_info,
+        init_rnn_state=None,
+    ):
         """
         Compute the training loss: policy_loss + value_loss + entropy_loss
         Policy loss: min(likelhood-ratio * advantage, clip(likelihood_ratio, 1-eps, 1+eps) * advantage)
@@ -133,20 +147,20 @@ class PPO(PolicyGradientAlgo):
             dist_info, value = self.agent(*agent_inputs)
         dist = self.agent.distribution
 
-        ratio = dist.likelihood_ratio(action, old_dist_info=old_dist_info,
-            new_dist_info=dist_info)
+        ratio = dist.likelihood_ratio(
+            action, old_dist_info=old_dist_info, new_dist_info=dist_info
+        )
         surr_1 = ratio * advantage
-        clipped_ratio = torch.clamp(ratio, 1. - self.ratio_clip,
-            1. + self.ratio_clip)
+        clipped_ratio = torch.clamp(ratio, 1.0 - self.ratio_clip, 1.0 + self.ratio_clip)
         surr_2 = clipped_ratio * advantage
         surrogate = torch.min(surr_1, surr_2)
-        pi_loss = - valid_mean(surrogate, valid)
+        pi_loss = -valid_mean(surrogate, valid)
 
         value_error = 0.5 * (value - return_) ** 2
         value_loss = self.value_loss_coeff * valid_mean(value_error, valid)
 
         entropy = dist.mean_entropy(dist_info, valid)
-        entropy_loss = - self.entropy_loss_coeff * entropy
+        entropy_loss = -self.entropy_loss_coeff * entropy
 
         loss = pi_loss + value_loss + entropy_loss
 

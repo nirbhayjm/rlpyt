@@ -1,4 +1,3 @@
-
 import copy
 
 configs = dict()
@@ -11,12 +10,12 @@ config = dict(
         learning_rate=3e-4,
         value_loss_coeff=0.5,
         entropy_loss_coeff=0.01,
-        clip_grad_norm=1.,
+        clip_grad_norm=1.0,
     ),
     env=dict(
         game="pong",
         num_img_obs=1,
-        ),
+    ),
     model=dict(),
     optim=dict(),
     runner=dict(

@@ -1,4 +1,3 @@
-
 import torch
 
 
@@ -12,7 +11,7 @@ def select_at_indexes(indexes, tensor):
     num = indexes.numel()
     t_flat = tensor.view((num,) + tensor.shape[dim:])
     s_flat = t_flat[torch.arange(num), indexes.view(-1)]
-    return s_flat.view(tensor.shape[:dim] + tensor.shape[dim + 1:])
+    return s_flat.view(tensor.shape[:dim] + tensor.shape[dim + 1 :])
 
 
 def to_onehot(indexes, num, dtype=None):
@@ -21,8 +20,7 @@ def to_onehot(indexes, num, dtype=None):
     trailing dimension."""
     if dtype is None:
         dtype = indexes.dtype
-    onehot = torch.zeros(indexes.shape + (num,),
-        dtype=dtype, device=indexes.device)
+    onehot = torch.zeros(indexes.shape + (num,), dtype=dtype, device=indexes.device)
     onehot.scatter_(-1, indexes.unsqueeze(-1).type(torch.long), 1)
     return onehot
 
@@ -49,7 +47,7 @@ def valid_mean(tensor, valid=None, dim=None):
 def infer_leading_dims(tensor, dim):
     """Looks for up to two leading dimensions in ``tensor``, before
     the data dimensions, of which there are assumed to be ``dim`` number.
-    For use at beginning of model's ``forward()`` method, which should 
+    For use at beginning of model's ``forward()`` method, which should
     finish with ``restore_leading_dims()`` (see that function for help.)
     Returns:
     lead_dim: int --number of leading dims found.

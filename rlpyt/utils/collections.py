@@ -1,8 +1,8 @@
-
-import sys
-from collections import namedtuple, OrderedDict
-from inspect import Signature as Sig, Parameter as Param
 import string
+import sys
+from collections import OrderedDict, namedtuple
+from inspect import Parameter as Param
+from inspect import Signature as Sig
 
 RESERVED_NAMES = ("get", "items")
 
@@ -10,11 +10,13 @@ RESERVED_NAMES = ("get", "items")
 def tuple_itemgetter(i):
     def _tuple_itemgetter(obj):
         return tuple.__getitem__(obj, i)
+
     return _tuple_itemgetter
 
 
-def namedarraytuple(typename, field_names, return_namedtuple_cls=False,
-        classname_suffix=False):
+def namedarraytuple(
+    typename, field_names, return_namedtuple_cls=False, classname_suffix=False
+):
     """
     Returns a new subclass of a namedtuple which exposes indexing / slicing
     reads and writes applied to all contained objects, which must share
@@ -51,7 +53,7 @@ def namedarraytuple(typename, field_names, return_namedtuple_cls=False,
 
     try:  # For pickling, get location where this function was called.
         # NOTE: (pickling might not work for nested class definition.)
-        module = sys._getframe(1).f_globals.get('__name__', '__main__')
+        module = sys._getframe(1).f_globals.get("__name__", "__main__")
     except (AttributeError, ValueError):
         module = None
     NtCls = namedtuple(nt_typename, field_names, module=module)
@@ -66,11 +68,14 @@ def namedarraytuple(typename, field_names, return_namedtuple_cls=False,
                 try:
                     _ = s[loc]
                 except IndexError:
-                    raise Exception(f"Occured in {self.__class__} at field "
-                        f"'{self._fields[j]}'.") from e
+                    raise Exception(
+                        f"Occured in {self.__class__} at field " f"'{self._fields[j]}'."
+                    ) from e
 
-    __getitem__.__doc__ = (f"Return a new {typename} instance containing "
-        "the selected index or slice from each field.")
+    __getitem__.__doc__ = (
+        f"Return a new {typename} instance containing "
+        "the selected index or slice from each field."
+    )
 
     def __setitem__(self, loc, value):
         """
@@ -79,8 +84,11 @@ def namedarraytuple(typename, field_names, return_namedtuple_cls=False,
         field.  Else, assign whole of value to selected index or slice of
         all fields.  Ignore fields that are both None.
         """
-        if not (isinstance(value, tuple) and  # Check for matching structure.
-                getattr(value, "_fields", None) == self._fields):
+        if not (
+            isinstance(value, tuple)
+            and getattr(value, "_fields", None)  # Check for matching structure.
+            == self._fields
+        ):
             # Repeat value for each but respect any None.
             value = tuple(None if s is None else value for s in self)
         try:
@@ -88,8 +96,9 @@ def namedarraytuple(typename, field_names, return_namedtuple_cls=False,
                 if s is not None or v is not None:
                     s[loc] = v
         except (ValueError, IndexError, TypeError) as e:
-            raise Exception(f"Occured in {self.__class__} at field "
-                f"'{self._fields[j]}'.") from e
+            raise Exception(
+                f"Occured in {self.__class__} at field " f"'{self._fields[j]}'."
+            ) from e
 
     def __contains__(self, key):
         "Checks presence of field name (unlike tuple; like dict)."
@@ -105,24 +114,24 @@ def namedarraytuple(typename, field_names, return_namedtuple_cls=False,
             yield k, v
 
     for method in (__getitem__, __setitem__, get, items):
-        method.__qualname__ = f'{typename}.{method.__name__}'
+        method.__qualname__ = f"{typename}.{method.__name__}"
 
     arg_list = repr(NtCls._fields).replace("'", "")[1:-1]
     class_namespace = {
-        '__doc__': f'{typename}({arg_list})',
-        '__slots__': (),
-        '__getitem__': __getitem__,
-        '__setitem__': __setitem__,
-        '__contains__': __contains__,
-        'get': get,
-        'items': items,
+        "__doc__": f"{typename}({arg_list})",
+        "__slots__": (),
+        "__getitem__": __getitem__,
+        "__setitem__": __setitem__,
+        "__contains__": __contains__,
+        "get": get,
+        "items": items,
     }
 
     for index, name in enumerate(NtCls._fields):
         if name in RESERVED_NAMES:
             raise ValueError(f"Disallowed field name: {name}.")
         itemgetter_object = tuple_itemgetter(index)
-        doc = f'Alias for field number {index}'
+        doc = f"Alias for field number {index}"
         class_namespace[name] = property(itemgetter_object, doc=doc)
 
     result = type(typename, (NtCls,), class_namespace)
@@ -145,8 +154,9 @@ def is_namedtuple_class(obj):
         return False
     if obj.mro()[1] is not tuple:
         return False
-    if not all(hasattr(obj, attr)
-            for attr in ["_fields", "_asdict", "_make", "_replace"]):
+    if not all(
+        hasattr(obj, attr) for attr in ["_fields", "_asdict", "_make", "_replace"]
+    ):
         return False
     return True
 
@@ -185,22 +195,28 @@ def namedarraytuple_like(namedtuple_or_class, classname_suffix=False):
     Named[Array]Tuple[Schema]."""
     ntc = namedtuple_or_class
     if is_namedtuple(ntc):
-        return namedarraytuple(type(ntc).__name__, ntc._fields,
-            classname_suffix=classname_suffix)
+        return namedarraytuple(
+            type(ntc).__name__, ntc._fields, classname_suffix=classname_suffix
+        )
     elif is_namedtuple_class(ntc):
-        return namedarraytuple(ntc.__name__, ntc._fields,
-            classname_suffix=classname_suffix)
+        return namedarraytuple(
+            ntc.__name__, ntc._fields, classname_suffix=classname_suffix
+        )
     elif is_namedarraytuple(ntc):
         return type(ntc)
     elif is_namedarraytuple_class(ntc):
         return ntc
-    elif isinstance(ntc, (NamedTupleSchema, NamedTuple, NamedArrayTupleSchema,
-            NamedArrayTuple)):
-        return namedarraytuple(ntc._typename, ntc._fields,
-            classname_suffix=classname_suffix)
+    elif isinstance(
+        ntc, (NamedTupleSchema, NamedTuple, NamedArrayTupleSchema, NamedArrayTuple)
+    ):
+        return namedarraytuple(
+            ntc._typename, ntc._fields, classname_suffix=classname_suffix
+        )
     else:
-        raise TypeError("Input must be namedtuple or namedarraytuple instance"
-            f" or class, got {type(ntc)}.")
+        raise TypeError(
+            "Input must be namedtuple or namedarraytuple instance"
+            f" or class, got {type(ntc)}."
+        )
 
 
 class AttrDict(dict):
@@ -221,8 +237,9 @@ class AttrDict(dict):
         Provides a "deep" copy of all unbroken chains of types AttrDict, but
         shallow copies otherwise, (e.g. numpy arrays are NOT copied).
         """
-        return type(self)(**{k: v.copy() if isinstance(v, AttrDict) else v
-            for k, v in self.items()})
+        return type(self)(
+            **{k: v.copy() if isinstance(v, AttrDict) else v for k, v in self.items()}
+        )
 
 
 ############################################################################
@@ -245,7 +262,9 @@ class NamedTupleSchema:
             spaces = any([whitespace in fields for whitespace in string.whitespace])
             commas = "," in fields
             if spaces and commas:
-                raise ValueError(f"Single string fields={fields} cannot have both spaces and commas.")
+                raise ValueError(
+                    f"Single string fields={fields} cannot have both spaces and commas."
+                )
             elif spaces:
                 fields = fields.split()
             elif commas:
@@ -259,14 +278,16 @@ class NamedTupleSchema:
             if not isinstance(field, str):
                 raise ValueError(f"field names must be strings: {field}")
             if field.startswith("_"):
-                raise ValueError(f"field names cannot start with an "
-                                 f"underscore: {field}")
+                raise ValueError(
+                    f"field names cannot start with an " f"underscore: {field}"
+                )
             if field in ("index", "count"):
                 raise ValueError(f"can't name field 'index' or 'count'")
         self.__dict__["_typename"] = typename
         self.__dict__["_fields"] = fields
-        self.__dict__["_signature"] = Sig(Param(field,
-            Param.POSITIONAL_OR_KEYWORD) for field in fields)
+        self.__dict__["_signature"] = Sig(
+            Param(field, Param.POSITIONAL_OR_KEYWORD) for field in fields
+        )
 
     def __call__(self, *args, **kwargs):
         """Allows instances to act like `namedtuple` constructors."""
@@ -279,8 +300,7 @@ class NamedTupleSchema:
 
     def __setattr__(self, name, value):
         """Make the type-like object immutable."""
-        raise TypeError(f"can't set attributes of '{type(self).__name__}' "
-                        "instance")
+        raise TypeError(f"can't set attributes of '{type(self).__name__}' " "instance")
 
     def __repr__(self):
         return f"{type(self).__name__}({self._typename!r}, {self._fields!r})"
@@ -311,8 +331,7 @@ class NamedTuple(tuple):
     def __new__(cls, typename, fields, values):
         result = tuple.__new__(cls, values)
         if len(fields) != len(result):
-            raise ValueError(f"Expected {len(fields)} arguments, got "
-                             f"{len(result)}")
+            raise ValueError(f"Expected {len(fields)} arguments, got " f"{len(result)}")
         result.__dict__["_typename"] = typename
         result.__dict__["_fields"] = fields
         return result
@@ -322,13 +341,15 @@ class NamedTuple(tuple):
         try:
             return tuple.__getitem__(self, self._fields.index(name))
         except ValueError:
-            raise AttributeError(f"'{self._typename}' object has no attribute "
-                                 f"'{name}'")
+            raise AttributeError(
+                f"'{self._typename}' object has no attribute " f"'{name}'"
+            )
 
     def __setattr__(self, name, value):
         """Make the object immutable, like a tuple."""
-        raise AttributeError(f"can't set attributes of "
-                             f"'{type(self).__name__}' instance")
+        raise AttributeError(
+            f"can't set attributes of " f"'{type(self).__name__}' instance"
+        )
 
     def _make(self, iterable):
         """Make a new object of same typename and fields from a sequence or
@@ -340,8 +361,9 @@ class NamedTuple(tuple):
         fields with new values."""
         result = self._make(map(kwargs.pop, self._fields, self))
         if kwargs:
-            raise ValueError(f"Got unexpected field names: "
-                             f"{str(list(kwargs))[1:-1]}")
+            raise ValueError(
+                f"Got unexpected field names: " f"{str(list(kwargs))[1:-1]}"
+            )
         return result
 
     def _asdict(self):
@@ -355,8 +377,12 @@ class NamedTuple(tuple):
 
     def __repr__(self):
         """Return a nicely formatted string showing the typename."""
-        return self._typename + '(' + ', '.join(f'{name}={value}'
-            for name, value in zip(self._fields, self)) + ')'
+        return (
+            self._typename
+            + "("
+            + ", ".join(f"{name}={value}" for name, value in zip(self._fields, self))
+            + ")"
+        )
 
 
 class NamedArrayTupleSchema(NamedTupleSchema):
@@ -374,7 +400,6 @@ class NamedArrayTupleSchema(NamedTupleSchema):
 
 
 class NamedArrayTuple(NamedTuple):
-
     def __getitem__(self, loc):
         """Return a new object of the same typename and fields containing the
         selected index or slice from each value."""
@@ -387,8 +412,10 @@ class NamedArrayTuple(NamedTuple):
                 try:
                     _ = s[loc]
                 except IndexError:
-                    raise Exception(f"Occured in '{self._typename}' at field "
-                                    f"'{self._fields[j]}'.") from e
+                    raise Exception(
+                        f"Occured in '{self._typename}' at field "
+                        f"'{self._fields[j]}'."
+                    ) from e
 
     def __setitem__(self, loc, value):
         """
@@ -397,8 +424,11 @@ class NamedArrayTuple(NamedTuple):
         value.  Else, assign whole of value to selected index or slice of
         all fields.  Ignore fields that are both None.
         """
-        if not (isinstance(value, tuple) and  # Check for matching structure.
-                getattr(value, "_fields", None) == self._fields):
+        if not (
+            isinstance(value, tuple)
+            and getattr(value, "_fields", None)  # Check for matching structure.
+            == self._fields
+        ):
             # Repeat value for each but respect any None.
             value = tuple(None if s is None else value for s in self)
         try:
@@ -406,8 +436,9 @@ class NamedArrayTuple(NamedTuple):
                 if s is not None or v is not None:
                     s[loc] = v
         except (ValueError, IndexError, TypeError) as e:
-            raise Exception(f"Occured in {self.__class__} at field "
-                            f"'{self._fields[j]}'.") from e
+            raise Exception(
+                f"Occured in {self.__class__} at field " f"'{self._fields[j]}'."
+            ) from e
 
     def __contains__(self, key):
         """Checks presence of field name (unlike tuple; like dict)."""
@@ -437,6 +468,8 @@ def NamedArrayTupleSchema_like(example):
     elif is_namedtuple_class(example) or is_namedarraytuple_class(example):
         return NamedArrayTupleSchema(example.__name__, example._fields)
     else:
-        raise TypeError("Input must be namedtuple or namedarraytuple instance"
+        raise TypeError(
+            "Input must be namedtuple or namedarraytuple instance"
             f" or class, or Named[Array]Tuple[Schema] instance, got "
-            f"{type(example)}.")
+            f"{type(example)}."
+        )

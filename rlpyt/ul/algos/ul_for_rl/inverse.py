@@ -1,27 +1,35 @@
+from collections import namedtuple
 
 import torch
 import torch.nn.functional as F
-from collections import namedtuple
 
+from rlpyt.algos.utils import valid_from_done
+from rlpyt.distributions.categorical import Categorical, DistInfo
 from rlpyt.ul.algos.ul_for_rl.base import BaseUlAlgorithm
+from rlpyt.ul.algos.utils.data_augs import random_shift
 from rlpyt.ul.models.inv_models import InverseModel
-from rlpyt.utils.quick_args import save__init__args
-from rlpyt.utils.logging import logger
+from rlpyt.ul.models.ul.encoders import EncoderModel
 from rlpyt.ul.replays.ul_for_rl_replay import UlForRlReplayBuffer
 from rlpyt.utils.buffer import buffer_to
-from rlpyt.algos.utils import valid_from_done
-from rlpyt.ul.models.ul.encoders import EncoderModel
-from rlpyt.ul.algos.utils.data_augs import random_shift
-from rlpyt.distributions.categorical import Categorical, DistInfo
-
+from rlpyt.utils.logging import logger
+from rlpyt.utils.quick_args import save__init__args
 
 IGNORE_INDEX = -100  # Mask action samples across episode boundary.
-OptInfo = namedtuple("OptInfo", [
-    "invLoss", "entLoss", "accuracy", "perplexity",
-    "activationLoss", "gradNorm", "convActivation"])
-ValInfo = namedtuple("ValInfo", [
-    "invLoss", "entLoss", "accuracy", "perplexity",
-    "convActivation"])
+OptInfo = namedtuple(
+    "OptInfo",
+    [
+        "invLoss",
+        "entLoss",
+        "accuracy",
+        "perplexity",
+        "activationLoss",
+        "gradNorm",
+        "convActivation",
+    ],
+)
+ValInfo = namedtuple(
+    "ValInfo", ["invLoss", "entLoss", "accuracy", "perplexity", "convActivation"]
+)
 
 
 class Inverse(BaseUlAlgorithm):
@@ -30,33 +38,35 @@ class Inverse(BaseUlAlgorithm):
     opt_info_fields = tuple(f for f in OptInfo._fields)  # copy
 
     def __init__(
-            self,
-            batch_size,
-            learning_rate,
-            replay_filepath,
-            delta_T=1,
-            OptimCls=torch.optim.Adam,
-            optim_kwargs=None,
-            initial_state_dict=None,
-            clip_grad_norm=10.,
-            EncoderCls=EncoderModel,
-            encoder_kwargs=None,
-            ReplayCls=UlForRlReplayBuffer,
-            onehot_actions=True,
-            activation_loss_coefficient=0.0,
-            learning_rate_anneal=None,  # cosine
-            learning_rate_warmup=0,  # number of updates
-            random_shift_prob=0.,
-            random_shift_pad=4,
-            InverseModelCls=InverseModel,
-            inverse_model_kwargs=None,
-            entropy_loss_coeff=0.01,
-            validation_split=0.0,
-            n_validation_batches=0,
-            ):
+        self,
+        batch_size,
+        learning_rate,
+        replay_filepath,
+        delta_T=1,
+        OptimCls=torch.optim.Adam,
+        optim_kwargs=None,
+        initial_state_dict=None,
+        clip_grad_norm=10.0,
+        EncoderCls=EncoderModel,
+        encoder_kwargs=None,
+        ReplayCls=UlForRlReplayBuffer,
+        onehot_actions=True,
+        activation_loss_coefficient=0.0,
+        learning_rate_anneal=None,  # cosine
+        learning_rate_warmup=0,  # number of updates
+        random_shift_prob=0.0,
+        random_shift_pad=4,
+        InverseModelCls=InverseModel,
+        inverse_model_kwargs=None,
+        entropy_loss_coeff=0.01,
+        validation_split=0.0,
+        n_validation_batches=0,
+    ):
         optim_kwargs = dict() if optim_kwargs is None else optim_kwargs
         encoder_kwargs = dict() if encoder_kwargs is None else encoder_kwargs
-        inverse_model_kwargs = dict() if inverse_model_kwargs is None else inverse_model_kwargs
+        inverse_model_kwargs = (
+            dict() if inverse_model_kwargs is None else inverse_model_kwargs
+        )
         save__init__args(locals())
         self.c_e_loss = torch.nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
         assert learning_rate_anneal in [None, "cosine"]
@@ -65,8 +75,11 @@ class Inverse(BaseUlAlgorithm):
         self._replay_T = delta_T + 1
 
     def initialize(self, n_updates, cuda_idx=None):
-        self.device = torch.device("cpu") if cuda_idx is None else torch.device(
-            "cuda", index=cuda_idx)
+        self.device = (
+            torch.device("cpu")
+            if cuda_idx is None
+            else torch.device("cuda", index=cuda_idx)
+        )
 
         examples = self.load_replay()
         self.encoder = self.EncoderCls(
@@ -102,15 +115,18 @@ class Inverse(BaseUlAlgorithm):
         if self.lr_scheduler is not None:
             self.lr_scheduler.step(itr)  # Do every itr instead of every epoch
         self.optimizer.zero_grad()
-        inv_loss, ent_loss, accuracy, perplexity, conv_output = self.inverse_loss(samples)
+        inv_loss, ent_loss, accuracy, perplexity, conv_output = self.inverse_loss(
+            samples
+        )
         act_loss = self.activation_loss(conv_output)
         loss = inv_loss + ent_loss + act_loss
         loss.backward()
         if self.clip_grad_norm is None:
-            grad_norm = 0.
+            grad_norm = 0.0
         else:
             grad_norm = torch.nn.utils.clip_grad_norm_(
-                self.parameters(), self.clip_grad_norm)
+                self.parameters(), self.clip_grad_norm
+            )
         self.optimizer.step()
         opt_info.invLoss.append(inv_loss.item())
         opt_info.entLoss.append(ent_loss.item())
@@ -119,14 +135,15 @@ class Inverse(BaseUlAlgorithm):
         opt_info.activationLoss.append(act_loss.item())
         opt_info.gradNorm.append(grad_norm.item())
         opt_info.convActivation.append(
-            conv_output[0].detach().cpu().view(-1).numpy())  # Keep 1 full one.
+            conv_output[0].detach().cpu().view(-1).numpy()
+        )  # Keep 1 full one.
         return opt_info
 
     def inverse_loss(self, samples):
         observation = samples.observation[0]  # [T,B,C,H,W]->[B,C,H,W]
         last_observation = samples.observation[-1]
 
-        if self.random_shift_prob > 0.:
+        if self.random_shift_prob > 0.0:
             observation = random_shift(
                 imgs=observation,
                 pad=self.random_shift_pad,
@@ -142,8 +159,8 @@ class Inverse(BaseUlAlgorithm):
         # if self.onehot_actions:
         #     action = to_onehot(action, self._act_dim, dtype=torch.float)
         observation, last_observation, action = buffer_to(
-            (observation, last_observation, action),
-            device=self.device)
+            (observation, last_observation, action), device=self.device
+        )
 
         _, conv_obs = self.encoder(observation)
         _, conv_last = self.encoder(last_observation)
@@ -151,7 +168,7 @@ class Inverse(BaseUlAlgorithm):
         valid = valid_from_done(samples.done).type(torch.bool)  # [T,B]
         # All timesteps invalid if the last_observation is:
         valid = valid[-1].repeat(self.delta_T, 1).transpose(1, 0)  # [B,T-1]
-        
+
         if self.onehot_actions:
             logits = self.inverse_model(conv_obs, conv_last)  # [B,T-1,A]
             labels = action[:-1].transpose(1, 0)  # [B,T-1], not the last action
@@ -169,7 +186,7 @@ class Inverse(BaseUlAlgorithm):
                 dist_info=dist_info,
                 valid=valid,
             )
-            entropy_loss = - self.entropy_loss_coeff * entropy
+            entropy_loss = -self.entropy_loss_coeff * entropy
 
             correct = torch.argmax(logits.detach(), dim=1) == labels
             accuracy = torch.mean(correct[valid].float())
@@ -177,8 +194,7 @@ class Inverse(BaseUlAlgorithm):
         else:
             raise NotImplementedError
 
-        perplexity = self.distribution.mean_perplexity(dist_info,
-            valid.to(self.device))
+        perplexity = self.distribution.mean_perplexity(dist_info, valid.to(self.device))
 
         return inv_loss, entropy_loss, accuracy, perplexity, conv_obs
 
@@ -187,16 +203,22 @@ class Inverse(BaseUlAlgorithm):
         val_info = ValInfo(*([] for _ in range(len(ValInfo._fields))))
         self.optimizer.zero_grad()
         for _ in range(self.n_validation_batches):
-            samples = self.replay_buffer.sample_batch(self.batch_size,
-                validation=True)
+            samples = self.replay_buffer.sample_batch(self.batch_size, validation=True)
             with torch.no_grad():
-                inv_loss, ent_loss, accuracy, perplexity, conv_output = self.inverse_loss(samples)
+                (
+                    inv_loss,
+                    ent_loss,
+                    accuracy,
+                    perplexity,
+                    conv_output,
+                ) = self.inverse_loss(samples)
             val_info.invLoss.append(inv_loss.item())
             val_info.entLoss.append(ent_loss.item())
             val_info.accuracy.append(accuracy.item())
             val_info.perplexity.append(perplexity.item())
             val_info.convActivation.append(
-                conv_output[0].detach().cpu().view(-1).numpy())  # Keep 1 full one.
+                conv_output[0].detach().cpu().view(-1).numpy()
+            )  # Keep 1 full one.
         self.optimizer.zero_grad()
         logger.log("...validation loss completed.")
         return val_info

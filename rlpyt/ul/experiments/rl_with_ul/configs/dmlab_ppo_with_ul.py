@@ -1,4 +1,3 @@
-
 import copy
 
 configs = dict()
@@ -13,7 +12,7 @@ config = dict(
         learning_rate=2.5e-4,
         value_loss_coeff=0.5,
         entropy_loss_coeff=0.01,  # LEVEL-SPECIFIC
-        clip_grad_norm=100.,
+        clip_grad_norm=100.0,
         initial_optim_state_dict=None,
         gae_lambda=0.97,
         minibatches=2,
@@ -33,15 +32,15 @@ config = dict(
         ul_delta_T=3,
         ul_batch_B=512,
         ul_batch_T=1,
-        ul_random_shift_prob=1.,
+        ul_random_shift_prob=1.0,
         ul_random_shift_pad=4,
         ul_target_update_interval=1,
         ul_target_update_tau=0.01,
         ul_latent_size=256,
         ul_anchor_hidden_sizes=512,
-        ul_clip_grad_norm=10.,
-        ul_pri_alpha=0.,
-        ul_pri_beta=1.,
+        ul_clip_grad_norm=10.0,
+        ul_pri_alpha=0.0,
+        ul_pri_beta=1.0,
         ul_pri_n_step_return=1,
     ),
     env=dict(

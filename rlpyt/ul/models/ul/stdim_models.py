@@ -1,33 +1,30 @@
-
 import torch
 import torch.nn.functional as F
 
 from rlpyt.models.mlp import MlpModel
-from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.models.utils import conv2d_output_shape
+from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
 
 def weight_init(m):
     """Kaiming_normal is standard for relu networks, sometimes."""
     if isinstance(m, (torch.nn.Linear, torch.nn.Conv2d)):
-        torch.nn.init.kaiming_normal_(m.weight, mode="fan_in", 
-            nonlinearity="relu")
+        torch.nn.init.kaiming_normal_(m.weight, mode="fan_in", nonlinearity="relu")
         torch.nn.init.zeros_(m.bias)
 
 
 class StDimEncoderModel(torch.nn.Module):
-
     def __init__(
-            self,
-            image_shape,
-            latent_size,
-            channels=None,
-            kernel_sizes=None,
-            strides=None,
-            paddings=None,
-            hidden_sizes=None,
-            kiaming_init=True,
-            ):
+        self,
+        image_shape,
+        latent_size,
+        channels=None,
+        kernel_sizes=None,
+        strides=None,
+        paddings=None,
+        hidden_sizes=None,
+        kiaming_init=True,
+    ):
         super().__init__()
         c, h, w = image_shape
         self.conv = Conv2dStdimModel(
@@ -53,7 +50,7 @@ class StDimEncoderModel(torch.nn.Module):
         lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
         if observation.dtype == torch.uint8:
             img = observation.type(torch.float)
-            img = img.mul_(1. / 255)
+            img = img.mul_(1.0 / 255)
         else:
             img = observation
         conv, conv_layers = self.conv(img.view(T * B, *img_shape))  # lists all layers
@@ -70,7 +67,7 @@ class StDimEncoderModel(torch.nn.Module):
     @property
     def conv_out_shapes(self):
         return self._conv_layer_shapes
-    
+
     @property
     def output_size(self):
         return self._output_size
@@ -118,7 +115,6 @@ class StDimGlobalLocalContrastModel(torch.nn.Module):
 
 
 class StDimLocalLocalContrastModel(torch.nn.Module):
-
     def __init__(self, local_size, anchor_hidden_sizes):
         super().__init__()
         self.anchor_mlp = MlpModel(
@@ -158,17 +154,16 @@ class StDimLocalLocalContrastModel(torch.nn.Module):
 
 
 class Conv2dStdimModel(torch.nn.Module):
-
     def __init__(
-            self,
-            in_channels,
-            channels,
-            kernel_sizes,
-            strides,
-            paddings=None,
-            nonlinearity=torch.nn.ReLU,
-            use_maxpool=False,
-            ):
+        self,
+        in_channels,
+        channels,
+        kernel_sizes,
+        strides,
+        paddings=None,
+        nonlinearity=torch.nn.ReLU,
+        use_maxpool=False,
+    ):
         super().__init__()
         if paddings is None:
             paddings = [0 for _ in range(len(channels))]
@@ -180,9 +175,14 @@ class Conv2dStdimModel(torch.nn.Module):
             strides = ones
         else:
             maxp_strides = ones
-        conv_layers = [torch.nn.Conv2d(in_channels=ic, out_channels=oc,
-            kernel_size=k, stride=s, padding=p) for (ic, oc, k, s, p) in
-            zip(in_channels, channels, kernel_sizes, strides, paddings)]
+        conv_layers = [
+            torch.nn.Conv2d(
+                in_channels=ic, out_channels=oc, kernel_size=k, stride=s, padding=p
+            )
+            for (ic, oc, k, s, p) in zip(
+                in_channels, channels, kernel_sizes, strides, paddings
+            )
+        ]
         sequence = list()
         maxp_layers = list()
         for conv_layer, maxp_stride in zip(conv_layers, maxp_strides):
@@ -218,8 +218,9 @@ class Conv2dStdimModel(torch.nn.Module):
         without actually performing a forward pass through the model."""
         for child in self.conv.children():
             try:
-                h, w = conv2d_output_shape(h, w, child.kernel_size,
-                    child.stride, child.padding)
+                h, w = conv2d_output_shape(
+                    h, w, child.kernel_size, child.stride, child.padding
+                )
             except AttributeError:
                 pass  # Not a conv or maxpool layer.
             try:
@@ -234,8 +235,9 @@ class Conv2dStdimModel(torch.nn.Module):
         shapes = list()
         for child in self.conv.children():
             try:
-                h, w = conv2d_output_shape(h, w, child.kernel_size,
-                    child.stride, child.padding)
+                h, w = conv2d_output_shape(
+                    h, w, child.kernel_size, child.stride, child.padding
+                )
             except AttributeError:
                 pass  # Not a conv or maxpool layer.
             try:

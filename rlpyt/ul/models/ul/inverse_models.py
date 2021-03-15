@@ -1,4 +1,3 @@
-
 import torch
 
 from rlpyt.ul.models.mlp import MlpModel
@@ -6,16 +5,15 @@ from rlpyt.utils.tensor import infer_leading_dims
 
 
 class InverseModel(torch.nn.Module):
-
     def __init__(
-            self,
-            input_size,
-            hidden_sizes,
-            action_size,
-            num_actions,
-            subtract=False,
-            use_input="conv",  # ["conv", "z"]
-        ):
+        self,
+        input_size,
+        hidden_sizes,
+        action_size,
+        num_actions,
+        subtract=False,
+        use_input="conv",  # ["conv", "z"]
+    ):
         super().__init__()
         if use_input != "conv":
             raise NotImplementedError

@@ -1,4 +1,3 @@
-
 """
 Runs multiple instances of the Atari environment and optimizes using A2C
 algorithm and a recurrent agent. Uses GPU parallel sampler, with option for
@@ -15,17 +14,21 @@ is optimizing.  Feedforward agents are compatible with this arrangement by same
 use of 'valid' mask.
 
 """
-from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
-from rlpyt.samplers.parallel.gpu.collectors import (GpuResetCollector,
-    GpuWaitResetCollector)
-from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
-from rlpyt.algos.pg.a2c import A2C
 from rlpyt.agents.pg.atari import AtariLstmAgent
+from rlpyt.algos.pg.a2c import A2C
+from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 from rlpyt.runners.minibatch_rl import MinibatchRl
+from rlpyt.samplers.parallel.gpu.collectors import (
+    GpuResetCollector,
+    GpuWaitResetCollector,
+)
+from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 from rlpyt.utils.logging.context import logger_context
 
 
-def build_and_train(game="pong", run_ID=0, cuda_idx=None, mid_batch_reset=False, n_parallel=2):
+def build_and_train(
+    game="pong", run_ID=0, cuda_idx=None, mid_batch_reset=False, n_parallel=2
+):
     affinity = dict(cuda_idx=cuda_idx, workers_cpus=list(range(n_parallel)))
     Collector = GpuResetCollector if mid_batch_reset else GpuWaitResetCollector
     print(f"To satisfy mid_batch_reset=={mid_batch_reset}, using {Collector}.")
@@ -58,13 +61,24 @@ def build_and_train(game="pong", run_ID=0, cuda_idx=None, mid_batch_reset=False,
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--game', help='Atari game', default='pong')
-    parser.add_argument('--run_ID', help='run identifier (logging)', type=int, default=0)
-    parser.add_argument('--cuda_idx', help='gpu to use ', type=int, default=None)
-    parser.add_argument('--mid_batch_reset', help='whether environment resets during itr',
-        type=bool, default=False)
-    parser.add_argument('--n_parallel', help='number of sampler workers', type=int, default=2)
+
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument("--game", help="Atari game", default="pong")
+    parser.add_argument(
+        "--run_ID", help="run identifier (logging)", type=int, default=0
+    )
+    parser.add_argument("--cuda_idx", help="gpu to use ", type=int, default=None)
+    parser.add_argument(
+        "--mid_batch_reset",
+        help="whether environment resets during itr",
+        type=bool,
+        default=False,
+    )
+    parser.add_argument(
+        "--n_parallel", help="number of sampler workers", type=int, default=2
+    )
     args = parser.parse_args()
     build_and_train(
         game=args.game,

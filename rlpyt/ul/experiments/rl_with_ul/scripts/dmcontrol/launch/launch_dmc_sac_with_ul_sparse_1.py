@@ -1,10 +1,9 @@
-
-import sys
 import copy
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2
@@ -42,8 +41,11 @@ min_steps_ul = [1e4, 1e4]
 max_steps_ul = [1e4 + 10e3, 1e4 + 9e3]  # all 10k
 values = list(zip(ul_update_schedules, min_steps_ul, max_steps_ul))
 dir_names = ["{}_{}minstepulmax{}".format(*v) for v in values]
-keys = [("algo", "ul_update_schedule"),
-    ("algo", "min_steps_ul"), ("algo", "max_steps_ul")]
+keys = [
+    ("algo", "ul_update_schedule"),
+    ("algo", "min_steps_ul"),
+    ("algo", "max_steps_ul"),
+]
 variant_levels_1.append(VariantLevel(keys, values, dir_names))
 
 ul_lrs = [1e-3]  # too many other options, else [7e-4, 2e-3]
@@ -77,17 +79,20 @@ keys = [("algo", "ul_update_schedule")]
 variant_levels_2.append(VariantLevel(keys, values, dir_names))
 
 doms = [
-    "cartpole", "cartpole",
+    "cartpole",
+    "cartpole",
     "finger",
     "pendulum",
 ]
 tasks = [
-    "balance_sparse", "swingup_sparse",
+    "balance_sparse",
+    "swingup_sparse",
     "turn_hard",
     "swingup",
 ]
 fskips = [
-    8, 8,
+    8,
+    8,
     2,
     4,
 ]
@@ -97,7 +102,8 @@ bss = [256] * 4  # [512]
 # rprs = [512] + [256] * 2  # [512]
 # steps = [150e3, 150e3, 75e3, 3e5]
 steps = [
-    100e3, 100e3,
+    100e3,
+    100e3,
     400e3,
     200e3,
 ]

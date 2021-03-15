@@ -1,16 +1,14 @@
-
-import pickle
 import os.path as osp
+import pickle
 import time
 
 from rlpyt.runners.minibatch_rl import MinibatchRl, MinibatchRlEval
+from rlpyt.ul.runners.envstep_runner import MinibatchRlEvalEnvStep
 from rlpyt.utils.logging import logger
 from rlpyt.utils.prog_bar import ProgBarCounter
 
-from rlpyt.ul.runners.envstep_runner import MinibatchRlEvalEnvStep
 
 class ReplaySaverMixin:
-
     def log_diagnostics(self, itr, *args, **kwargs):
         if itr > 0:
             logger.log("Saving replay buffer...")

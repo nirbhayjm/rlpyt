@@ -1,4 +1,3 @@
-
 import copy
 
 configs = dict()
@@ -15,7 +14,7 @@ config = dict(
         batch_size=32,  # increase this first!
         learning_rate=6.25e-5,  # Adam Optimizer
         target_update_interval=2000,
-        clip_grad_norm=10.,
+        clip_grad_norm=10.0,
         min_steps_learn=int(5e4),
         double_dqn=True,
         prioritized_replay=False,
@@ -105,7 +104,7 @@ config = dict(
         intensity_sigma=None,
         intensity_prob=None,
         B_sample_mode=None,
-    )
+    ),
 )
 
 configs["serial_ddqn"] = config

@@ -1,17 +1,15 @@
-
 import numpy as np
 
-from rlpyt.replays.non_sequence.n_step import (NStepReturnBuffer,
-    SamplesFromReplay)
-from rlpyt.replays.non_sequence.uniform import UniformReplay
-from rlpyt.replays.non_sequence.prioritized import PrioritizedReplay
 from rlpyt.replays.async_ import AsyncReplayBufferMixin
+from rlpyt.replays.non_sequence.n_step import NStepReturnBuffer, SamplesFromReplay
+from rlpyt.replays.non_sequence.prioritized import PrioritizedReplay
+from rlpyt.replays.non_sequence.uniform import UniformReplay
+from rlpyt.utils.buffer import buffer_from_example, torchify_buffer
 from rlpyt.utils.collections import namedarraytuple
-from rlpyt.utils.buffer import torchify_buffer, buffer_from_example
 
-
-SamplesFromReplayTL = namedarraytuple("SamplesFromReplayTL",
-    SamplesFromReplay._fields + ("timeout", "timeout_n"))
+SamplesFromReplayTL = namedarraytuple(
+    "SamplesFromReplayTL", SamplesFromReplay._fields + ("timeout", "timeout_n")
+)
 
 
 class NStepTimeLimitBuffer(NStepReturnBuffer):
@@ -24,14 +22,15 @@ class NStepTimeLimitBuffer(NStepReturnBuffer):
         super().__init__(*args, **kwargs)
         if self.n_step_return > 1:
             self.samples_timeout_n = buffer_from_example(
-                self.samples.timeout[0, 0], (self.T, self.B),
-                share_memory=self.async_)
+                self.samples.timeout[0, 0], (self.T, self.B), share_memory=self.async_
+            )
         else:
             self.samples_timeout_n = self.samples.timeout
 
     def extract_batch(self, T_idxs, B_idxs):
         batch = super().extract_batch(T_idxs, B_idxs)
-        batch = SamplesFromReplayTL(*batch,
+        batch = SamplesFromReplayTL(
+            *batch,
             timeout=self.samples.timeout[T_idxs, B_idxs],
             timeout_n=self.samples_timeout_n[T_idxs, B_idxs],
         )
@@ -49,8 +48,9 @@ class NStepTimeLimitBuffer(NStepReturnBuffer):
         else:
             idxs = np.arange(t - nm1, t - nm1 + T) % T
             to_idxs = np.arange(t, t + T) % T
-        self.samples_timeout_n[idxs] = (self.samples_done_n[idxs] *
-            self.samples.timeout[to_idxs])
+        self.samples_timeout_n[idxs] = (
+            self.samples_done_n[idxs] * self.samples.timeout[to_idxs]
+        )
 
 
 class TlUniformReplayBuffer(UniformReplay, NStepTimeLimitBuffer):
@@ -61,11 +61,9 @@ class TlPrioritizedReplayBuffer(PrioritizedReplay, NStepTimeLimitBuffer):
     pass
 
 
-class AsyncTlUniformReplayBuffer(AsyncReplayBufferMixin,
-        TlUniformReplayBuffer):
+class AsyncTlUniformReplayBuffer(AsyncReplayBufferMixin, TlUniformReplayBuffer):
     pass
 
 
-class AsyncTlPrioritizedReplayBuffer(AsyncReplayBufferMixin,
-        TlPrioritizedReplayBuffer):
+class AsyncTlPrioritizedReplayBuffer(AsyncReplayBufferMixin, TlPrioritizedReplayBuffer):
     pass

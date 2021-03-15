@@ -1,10 +1,9 @@
-
-import sys
 import copy
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2
@@ -13,7 +12,9 @@ num_computers = int(args[1])
 
 print(f"MY_COMPUTER: {my_computer},  NUM_COMPUTERS: {num_computers}")
 
-script = "rlpyt/ul/experiments/rl_from_ul/scripts/atari/train/atari_ppo_from_ul_serial.py"
+script = (
+    "rlpyt/ul/experiments/rl_from_ul/scripts/atari/train/atari_ppo_from_ul_serial.py"
+)
 
 affinity_code = quick_affinity_code(contexts_per_gpu=3)
 runs_per_setting = 3
@@ -31,8 +32,16 @@ dir_names = ["{}updates_{}lr".format(*v) for v in values]
 keys = [("pretrain", "n_updates"), ("pretrain", "learning_rate")]
 variant_levels_1.append(VariantLevel(keys, values, dir_names))
 
-games = ["pong", "qbert", "seaquest", "space_invaders",
-    "alien", "breakout", "frostbite", "gravitar"]
+games = [
+    "pong",
+    "qbert",
+    "seaquest",
+    "space_invaders",
+    "alien",
+    "breakout",
+    "frostbite",
+    "gravitar",
+]
 dir_names = [game + "_holdout" for game in games]
 values = list(zip(games))
 keys = [("env", "game")]
@@ -48,12 +57,14 @@ n_steps = [25e6]
 pretrain_algos = ["ATC"]
 replays = ["20200608/15M_VecEps_B78"]
 model_dirs = ["/data/adam/ul4rl/models/20200826/atari_atc_ul_7game_1/"]
-values = list(zip(
-    n_steps,
-    pretrain_algos,
-    replays,
-    model_dirs,
-))
+values = list(
+    zip(
+        n_steps,
+        pretrain_algos,
+        replays,
+        model_dirs,
+    )
+)
 dir_names = ["RlFromUl"]  # TRAIN SCRIPT SPLITS OFF THIS
 keys = [
     ("runner", "n_steps"),
@@ -107,4 +118,3 @@ run_experiments(
     log_dirs=my_log_dirs,
     common_args=(default_config_key, experiment_title),
 )
-

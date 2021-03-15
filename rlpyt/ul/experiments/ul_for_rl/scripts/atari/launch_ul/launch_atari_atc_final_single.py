@@ -1,11 +1,10 @@
-
-import sys
 import copy
 import os.path as osp
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2 or len(args) == 0
@@ -37,8 +36,9 @@ replay_base_dir = "/data/adam/ul4rl/replays/20200608/15M_VecEps_B78"
 #     "alien", "breakout", "frostbite", "gravitar",
 # ]
 games = ["alien", "frostbite", "pong", "seaquest"]
-replay_filenames = [osp.join(replay_base_dir, game, "run_0/replaybuffer.pkl")
-    for game in games]
+replay_filenames = [
+    osp.join(replay_base_dir, game, "run_0/replaybuffer.pkl") for game in games
+]
 values = list(zip(replay_filenames, games))
 dir_names = games
 keys = [("algo", "replay_filepath"), ("name",)]

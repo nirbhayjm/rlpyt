@@ -1,10 +1,9 @@
-
-import sys
 import copy
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2
@@ -13,7 +12,9 @@ num_computers = int(args[1])
 
 print(f"MY_COMPUTER: {my_computer},  NUM_COMPUTERS: {num_computers}")
 
-script = "rlpyt/ul/experiments/rl_with_ul/scripts/dmcontrol/train/dmc_sac_with_ul_serial.py"
+script = (
+    "rlpyt/ul/experiments/rl_with_ul/scripts/dmcontrol/train/dmc_sac_with_ul_serial.py"
+)
 
 affinity_code = quick_affinity_code(contexts_per_gpu=3)
 runs_per_setting = 3
@@ -31,8 +32,7 @@ min_steps_ul = [1e4]
 ul_anneals = ["cosine"]
 values = list(zip(min_steps_rl, min_steps_ul, ul_anneals))
 dir_names = ["{}rlminstepsul{}_{}anneal".format(*v) for v in values]
-keys = [("algo", "min_steps_rl"), ("algo", "min_steps_ul"),
-    ("algo", "ul_lr_schedule")]
+keys = [("algo", "min_steps_rl"), ("algo", "min_steps_ul"), ("algo", "ul_lr_schedule")]
 variant_levels_1.append(VariantLevel(keys, values, dir_names))
 
 
@@ -47,21 +47,24 @@ variant_levels_1.append(VariantLevel(keys, values, dir_names))
 doms = [
     "cheetah",
     "ball_in_cup",
-    "cartpole", "cartpole",
+    "cartpole",
+    "cartpole",
     "walker",
     "hopper",
 ]
 tasks = [
     "run",
     "catch",
-    "swingup", "swingup_sparse",
+    "swingup",
+    "swingup_sparse",
     "walk",
     "hop",
 ]
 fskips = [
     4,
     4,
-    8, 8,
+    8,
+    8,
     2,
     4,
 ]
@@ -75,7 +78,8 @@ ul_bss = [512] + [256] * n_after_cheetah
 steps = [
     250e3,
     75e3,
-    375e2, 125e3,
+    375e2,
+    125e3,
     250e3,
     250e3,
 ]

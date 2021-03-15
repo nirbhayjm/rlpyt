@@ -1,8 +1,6 @@
-
 import numpy as np
 
-from rlpyt.samplers.collectors import (DecorrelatingStartCollector,
-    BaseEvalCollector)
+from rlpyt.samplers.collectors import BaseEvalCollector, DecorrelatingStartCollector
 from rlpyt.utils.buffer import buffer_method
 
 
@@ -29,8 +27,14 @@ class GpuResetCollector(DecorrelatingStartCollector):
             act_ready.acquire()  # Need sampled actions from server.
             for b, env in enumerate(self.envs):
                 o, r, d, env_info = env.step(step.action[b])
-                traj_infos[b].step(step.observation[b], step.action[b], r, d,
-                    step.agent_info[b], env_info)
+                traj_infos[b].step(
+                    step.observation[b],
+                    step.action[b],
+                    r,
+                    d,
+                    step.agent_info[b],
+                    env_info,
+                )
                 if getattr(env_info, "traj_done", d):
                     completed_infos.append(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()
@@ -91,8 +95,14 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
                     # Leave step.done[b] = True, record that.
                     continue
                 o, r, d, env_info = env.step(step.action[b])
-                traj_infos[b].step(step.observation[b], step.action[b], r, d,
-                    step.agent_info[b], env_info)
+                traj_infos[b].step(
+                    step.observation[b],
+                    step.action[b],
+                    r,
+                    d,
+                    step.agent_info[b],
+                    env_info,
+                )
                 if getattr(env_info, "traj_done", d):
                     completed_infos.append(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()
@@ -148,8 +158,14 @@ class GpuEvalCollector(BaseEvalCollector):
                 break
             for b, env in enumerate(self.envs):
                 o, r, d, env_info = env.step(step.action[b])
-                traj_infos[b].step(step.observation[b], step.action[b], r, d,
-                    step.agent_info[b], env_info)
+                traj_infos[b].step(
+                    step.observation[b],
+                    step.action[b],
+                    r,
+                    d,
+                    step.agent_info[b],
+                    env_info,
+                )
                 if getattr(env_info, "traj_done", d):
                     self.traj_infos_queue.put(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()

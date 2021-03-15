@@ -1,11 +1,10 @@
-
-import sys
 import copy
 import os.path as osp
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2 or len(args) == 0
@@ -38,7 +37,7 @@ dir_names = ["{}deltaT_{}hdsz".format(*v) for v in values]
 keys = [("algo", "delta_T"), ("algo", "hidden_sizes")]
 variant_levels_1.append(VariantLevel(keys, values, dir_names))
 
-kl_losses = [1., 0.1]
+kl_losses = [1.0, 0.1]
 values = list(zip(kl_losses))
 dir_names = ["{}klcoef".format(*v) for v in values]
 keys = [("algo", "kl_coeff")]
@@ -47,8 +46,9 @@ variant_levels_1.append(VariantLevel(keys, values, dir_names))
 
 replay_base_dir = "/data/adam/ul4rl/replays/20200715/rad_sac_replaysave84"
 domains = ["ball_in_cup", "cartpole", "cheetah", "walker"]
-replay_filenames = [osp.join(replay_base_dir, game, "run_0/replaybuffer.pkl")
-    for game in domains]
+replay_filenames = [
+    osp.join(replay_base_dir, game, "run_0/replaybuffer.pkl") for game in domains
+]
 values = list(zip(replay_filenames, domains))
 dir_names = domains
 keys = [("algo", "replay_filepath"), ("name",)]

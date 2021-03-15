@@ -1,13 +1,14 @@
-
+from rlpyt.samplers.async_.action_server import (
+    AsyncAlternatingActionServer,
+    AsyncNoOverlapAlternatingActionServer,
+)
 from rlpyt.samplers.async_.gpu_sampler import AsyncGpuSamplerBase
-from rlpyt.samplers.async_.action_server import (AsyncAlternatingActionServer,
-    AsyncNoOverlapAlternatingActionServer)
 from rlpyt.utils.logging import logger
 
 
 class AsyncAlternatingSamplerBase(AsyncGpuSamplerBase):
     """Defines several methods to extend the asynchronous GPU sampler to use
-    two alternating sets of environment workers.  
+    two alternating sets of environment workers.
     """
 
     alternating = True
@@ -20,7 +21,9 @@ class AsyncAlternatingSamplerBase(AsyncGpuSamplerBase):
         if agent.recurrent and not agent.alternating:
             raise TypeError("If agent is recurrent, must be 'alternating' to use here.")
         elif not agent.recurrent:
-            agent.alternating = True  # FF agent doesn't need special class, but tell it so.
+            agent.alternating = (
+                True  # FF agent doesn't need special class, but tell it so.
+            )
         return super().async_initialize(agent, *args, **kwargs)
 
     def launch_workers(self, double_buffer_slice, affinity, seed, n_envs_list):
@@ -32,22 +35,38 @@ class AsyncAlternatingSamplerBase(AsyncGpuSamplerBase):
         assert sum(n_envs_list) % 2 == 0
         half_w = len(n_envs_list) // 2  # Half of workers.
         self.half_B = half_B = sum(n_envs_list) // 2  # Half of envs.
-        self.obs_ready_pair = (self.sync.obs_ready[:half_w], self.sync.obs_ready[half_w:])
-        self.act_ready_pair = (self.sync.act_ready[:half_w], self.sync.act_ready[half_w:])
-        self.step_buffer_np_pair = (self.step_buffer_np[:half_B], self.step_buffer_np[half_B:])
-        self.agent_inputs_pair = (self.agent_inputs[:half_B], self.agent_inputs[half_B:])
+        self.obs_ready_pair = (
+            self.sync.obs_ready[:half_w],
+            self.sync.obs_ready[half_w:],
+        )
+        self.act_ready_pair = (
+            self.sync.act_ready[:half_w],
+            self.sync.act_ready[half_w:],
+        )
+        self.step_buffer_np_pair = (
+            self.step_buffer_np[:half_B],
+            self.step_buffer_np[half_B:],
+        )
+        self.agent_inputs_pair = (
+            self.agent_inputs[:half_B],
+            self.agent_inputs[half_B:],
+        )
         if self.eval_n_envs > 0:
             assert self.eval_n_envs_per * len(n_envs_list) % 2 == 0
             eval_half_B = self.eval_n_envs_per * len(n_envs_list) // 2
-            self.eval_step_buffer_np_pair = (self.eval_step_buffer_np[:eval_half_B],
-                self.eval_step_buffer_np[eval_half_B:])
-            self.eval_agent_inputs_pair = (self.eval_agent_inputs[:eval_half_B],
-                self.eval_agent_inputs[eval_half_B:])
+            self.eval_step_buffer_np_pair = (
+                self.eval_step_buffer_np[:eval_half_B],
+                self.eval_step_buffer_np[eval_half_B:],
+            )
+            self.eval_agent_inputs_pair = (
+                self.eval_agent_inputs[:eval_half_B],
+                self.eval_agent_inputs[eval_half_B:],
+            )
         if "bootstrap_value" in self.samples_np.agent:
             self.double_bootstrap_value_pair = tuple(
-                (buf.agent.bootstrap_value[:half_B],
-                    buf.agent.bootstrap_value[half_B:])
-                for buf in self.double_buffer)
+                (buf.agent.bootstrap_value[:half_B], buf.agent.bootstrap_value[half_B:])
+                for buf in self.double_buffer
+            )
 
     def _get_n_envs_lists(self, affinity):
         for aff in affinity:
@@ -56,13 +75,16 @@ class AsyncAlternatingSamplerBase(AsyncGpuSamplerBase):
         n_server = len(affinity)
         n_workers = [len(aff["workers_cpus"]) for aff in affinity]
         if B < n_server:
-            raise ValueError(f"Request fewer envs ({B}) than action servers "
-                f"({n_server}).")
+            raise ValueError(
+                f"Request fewer envs ({B}) than action servers " f"({n_server})."
+            )
         server_Bs = [B // n_server] * n_server
         if n_workers.count(n_workers[0]) != len(n_workers):
-            logger.log("WARNING: affinity requested different number of "
+            logger.log(
+                "WARNING: affinity requested different number of "
                 "environment workers per action server, but environments "
-                "will be assigned equally across action servers anyway.")
+                "will be assigned equally across action servers anyway."
+            )
         if B % n_server > 0:
             assert (B % n_server) % 2 == 0, "Need even num extra envs per server."
             for s in range((B % n_server) // 2):
@@ -90,11 +112,13 @@ class AsyncAlternatingSamplerBase(AsyncGpuSamplerBase):
         return n_envs_list
 
 
-class AsyncAlternatingSampler(AsyncAlternatingActionServer,
-        AsyncAlternatingSamplerBase):
+class AsyncAlternatingSampler(
+    AsyncAlternatingActionServer, AsyncAlternatingSamplerBase
+):
     pass
 
 
-class AsyncNoOverlapAlternatingSampler(AsyncNoOverlapAlternatingActionServer,
-        AsyncAlternatingSamplerBase):
+class AsyncNoOverlapAlternatingSampler(
+    AsyncNoOverlapAlternatingActionServer, AsyncAlternatingSamplerBase
+):
     pass

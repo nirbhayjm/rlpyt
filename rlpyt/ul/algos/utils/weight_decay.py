@@ -6,8 +6,7 @@ To add weight decay but not apply it to batch norm or biases.
 """
 
 
-def add_weight_decay(model, weight_decay=0., filter_ndim_1=True,
-        skip_list=None):
+def add_weight_decay(model, weight_decay=0.0, filter_ndim_1=True, skip_list=None):
     """Returns parameters and weight_decay args for optimizer."""
     skip_list = [] if skip_list is None else skip_list
     if weight_decay == 0 or (not filter_ndim_1 and not skip_list):
@@ -22,8 +21,8 @@ def add_weight_decay(model, weight_decay=0., filter_ndim_1=True,
         else:
             decay.append(param)
     params = [
-        {'params': no_decay, 'weight_decay': 0.},
-        {'params': decay, 'weight_decay': weight_decay},
+        {"params": no_decay, "weight_decay": 0.0},
+        {"params": decay, "weight_decay": weight_decay},
     ]
-    weight_decay = 0.
+    weight_decay = 0.0
     return params, weight_decay

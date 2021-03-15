@@ -1,4 +1,3 @@
-
 from inspect import getfullargspec
 
 
@@ -11,13 +10,13 @@ def save__init__args(values, underscore=False, overwrite=False, subclass_only=Fa
     args/kwargs listed in current subclass apply.
     """
     prefix = "_" if underscore else ""
-    self = values['self']
+    self = values["self"]
     args = list()
     Classes = type(self).mro()
     if subclass_only:
         Classes = Classes[:1]
     for Cls in Classes:  # class inheritances
-        if '__init__' in vars(Cls):
+        if "__init__" in vars(Cls):
             args += getfullargspec(Cls.__init__).args[1:]
     for arg in args:
         attr = prefix + arg

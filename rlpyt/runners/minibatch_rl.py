@@ -1,15 +1,15 @@
-
-import psutil
-import time
-import torch
 import math
+import time
 from collections import deque
 
+import psutil
+import torch
+
 from rlpyt.runners.base import BaseRunner
-from rlpyt.utils.quick_args import save__init__args
-from rlpyt.utils.seed import set_seed, make_seed
 from rlpyt.utils.logging import logger
 from rlpyt.utils.prog_bar import ProgBarCounter
+from rlpyt.utils.quick_args import save__init__args
+from rlpyt.utils.seed import make_seed, set_seed
 
 
 class MinibatchRlBase(BaseRunner):
@@ -31,20 +31,20 @@ class MinibatchRlBase(BaseRunner):
     _eval = False
 
     def __init__(
-            self,
-            algo,
-            agent,
-            sampler,
-            n_steps,
-            seed=None,
-            affinity=None,
-            log_interval_steps=1e5,
-            ):
+        self,
+        algo,
+        agent,
+        sampler,
+        n_steps,
+        seed=None,
+        affinity=None,
+        log_interval_steps=1e5,
+    ):
         n_steps = int(n_steps)
         log_interval_steps = int(log_interval_steps)
         affinity = dict() if affinity is None else affinity
         save__init__args(locals())
-        self.min_itr_learn = getattr(self.algo, 'min_itr_learn', 0)
+        self.min_itr_learn = getattr(self.algo, "min_itr_learn", 0)
 
     def startup(self):
         """
@@ -54,18 +54,22 @@ class MinibatchRlBase(BaseRunner):
         """
         p = psutil.Process()
         try:
-            if (self.affinity.get("master_cpus", None) is not None and
-                    self.affinity.get("set_affinity", True)):
+            if self.affinity.get("master_cpus", None) is not None and self.affinity.get(
+                "set_affinity", True
+            ):
                 p.cpu_affinity(self.affinity["master_cpus"])
             cpu_affin = p.cpu_affinity()
         except AttributeError:
             cpu_affin = "UNAVAILABLE MacOS"
-        logger.log(f"Runner {getattr(self, 'rank', '')} master CPU affinity: "
-            f"{cpu_affin}.")
+        logger.log(
+            f"Runner {getattr(self, 'rank', '')} master CPU affinity: " f"{cpu_affin}."
+        )
         if self.affinity.get("master_torch_threads", None) is not None:
             torch.set_num_threads(self.affinity["master_torch_threads"])
-        logger.log(f"Runner {getattr(self, 'rank', '')} master Torch threads: "
-            f"{torch.get_num_threads()}.")
+        logger.log(
+            f"Runner {getattr(self, 'rank', '')} master Torch threads: "
+            f"{torch.get_num_threads()}."
+        )
         if self.seed is None:
             self.seed = make_seed()
         set_seed(self.seed)
@@ -110,8 +114,7 @@ class MinibatchRlBase(BaseRunner):
         interval units from environment steps to iterations.
         """
         # Log at least as often as requested (round down itrs):
-        log_interval_itrs = max(self.log_interval_steps //
-            self.itr_batch_size, 1)
+        log_interval_itrs = max(self.log_interval_steps // self.itr_batch_size, 1)
         n_itr = self.n_steps // self.itr_batch_size
         if n_itr % log_interval_itrs > 0:  # Keep going to next log itr.
             n_itr += log_interval_itrs - (n_itr % log_interval_itrs)
@@ -123,7 +126,7 @@ class MinibatchRlBase(BaseRunner):
     def initialize_logging(self):
         self._opt_infos = {k: list() for k in self.algo.opt_info_fields}
         self._start_time = self._last_time = time.time()
-        self._cum_time = 0.
+        self._cum_time = 0.0
         self._cum_completed_trajs = 0
         self._last_update_counter = 0
 
@@ -165,7 +168,7 @@ class MinibatchRlBase(BaseRunner):
             v.extend(new_v if isinstance(new_v, list) else [new_v])
         self.pbar.update((itr + 1) % self.log_interval_itrs)
 
-    def log_diagnostics(self, itr, traj_infos=None, eval_time=0, prefix='Diagnostics/'):
+    def log_diagnostics(self, itr, traj_infos=None, eval_time=0, prefix="Diagnostics/"):
         """
         Write diagnostics (including stored ones) to csv via the logger.
         """
@@ -177,31 +180,37 @@ class MinibatchRlBase(BaseRunner):
         self._cum_time = new_time - self._start_time
         train_time_elapsed = new_time - self._last_time - eval_time
         new_updates = self.algo.update_counter - self._last_update_counter
-        new_samples = (self.sampler.batch_size * self.world_size *
-            self.log_interval_itrs)
-        updates_per_second = (float('nan') if itr == 0 else
-            new_updates / train_time_elapsed)
-        samples_per_second = (float('nan') if itr == 0 else
-            new_samples / train_time_elapsed)
-        replay_ratio = (new_updates * self.algo.batch_size * self.world_size /
-            new_samples)
-        cum_replay_ratio = (self.algo.batch_size * self.algo.update_counter /
-            ((itr + 1) * self.sampler.batch_size))  # world_size cancels.
+        new_samples = self.sampler.batch_size * self.world_size * self.log_interval_itrs
+        updates_per_second = (
+            float("nan") if itr == 0 else new_updates / train_time_elapsed
+        )
+        samples_per_second = (
+            float("nan") if itr == 0 else new_samples / train_time_elapsed
+        )
+        replay_ratio = (
+            new_updates * self.algo.batch_size * self.world_size / new_samples
+        )
+        cum_replay_ratio = (
+            self.algo.batch_size
+            * self.algo.update_counter
+            / ((itr + 1) * self.sampler.batch_size)
+        )  # world_size cancels.
         cum_steps = (itr + 1) * self.sampler.batch_size * self.world_size
 
         with logger.tabular_prefix(prefix):
             if self._eval:
-                logger.record_tabular('CumTrainTime',
-                    self._cum_time - self._cum_eval_time)  # Already added new eval_time.
-            logger.record_tabular('Iteration', itr)
-            logger.record_tabular('CumTime (s)', self._cum_time)
-            logger.record_tabular('CumSteps', cum_steps)
-            logger.record_tabular('CumCompletedTrajs', self._cum_completed_trajs)
-            logger.record_tabular('CumUpdates', self.algo.update_counter)
-            logger.record_tabular('StepsPerSecond', samples_per_second)
-            logger.record_tabular('UpdatesPerSecond', updates_per_second)
-            logger.record_tabular('ReplayRatio', replay_ratio)
-            logger.record_tabular('CumReplayRatio', cum_replay_ratio)
+                logger.record_tabular(
+                    "CumTrainTime", self._cum_time - self._cum_eval_time
+                )  # Already added new eval_time.
+            logger.record_tabular("Iteration", itr)
+            logger.record_tabular("CumTime (s)", self._cum_time)
+            logger.record_tabular("CumSteps", cum_steps)
+            logger.record_tabular("CumCompletedTrajs", self._cum_completed_trajs)
+            logger.record_tabular("CumUpdates", self.algo.update_counter)
+            logger.record_tabular("StepsPerSecond", samples_per_second)
+            logger.record_tabular("UpdatesPerSecond", updates_per_second)
+            logger.record_tabular("ReplayRatio", replay_ratio)
+            logger.record_tabular("CumReplayRatio", cum_replay_ratio)
         self._log_infos(traj_infos)
         logger.dump_tabular(with_prefix=False)
 
@@ -237,7 +246,7 @@ class MinibatchRl(MinibatchRlBase):
 
     def __init__(self, log_traj_window=100, **kwargs):
         """
-        Args: 
+        Args:
             log_traj_window (int): How many trajectories to hold in deque for computing performance statistics.
         """
         super().__init__(**kwargs)
@@ -274,11 +283,12 @@ class MinibatchRl(MinibatchRlBase):
         self._traj_infos.extend(traj_infos)
         super().store_diagnostics(itr, traj_infos, opt_info)
 
-    def log_diagnostics(self, itr, prefix='Diagnostics/'):
+    def log_diagnostics(self, itr, prefix="Diagnostics/"):
         with logger.tabular_prefix(prefix):
-            logger.record_tabular('NewCompletedTrajs', self._new_completed_trajs)
-            logger.record_tabular('StepsInTrajWindow',
-                sum(info["Length"] for info in self._traj_infos))
+            logger.record_tabular("NewCompletedTrajs", self._new_completed_trajs)
+            logger.record_tabular(
+                "StepsInTrajWindow", sum(info["Length"] for info in self._traj_infos)
+            )
         super().log_diagnostics(itr, prefix=prefix)
         self._new_completed_trajs = 0
 
@@ -338,13 +348,13 @@ class MinibatchRlEval(MinibatchRlBase):
         super().initialize_logging()
         self._cum_eval_time = 0
 
-    def log_diagnostics(self, itr, eval_traj_infos, eval_time, prefix='Diagnostics/'):
+    def log_diagnostics(self, itr, eval_traj_infos, eval_time, prefix="Diagnostics/"):
         if not eval_traj_infos:
             logger.log("WARNING: had no complete trajectories in eval.")
         steps_in_eval = sum([info["Length"] for info in eval_traj_infos])
         with logger.tabular_prefix(prefix):
-            logger.record_tabular('StepsInEval', steps_in_eval)
-            logger.record_tabular('TrajsInEval', len(eval_traj_infos))
+            logger.record_tabular("StepsInEval", steps_in_eval)
+            logger.record_tabular("TrajsInEval", len(eval_traj_infos))
             self._cum_eval_time += eval_time
-            logger.record_tabular('CumEvalTime', self._cum_eval_time)
+            logger.record_tabular("CumEvalTime", self._cum_eval_time)
         super().log_diagnostics(itr, eval_traj_infos, eval_time, prefix=prefix)

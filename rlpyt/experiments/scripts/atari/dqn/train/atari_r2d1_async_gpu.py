@@ -1,17 +1,15 @@
-
 import sys
 
-from rlpyt.utils.launching.affinity import affinity_from_code
-from rlpyt.samplers.async_.gpu_sampler import AsyncGpuSampler
-from rlpyt.samplers.async_.collectors import DbGpuResetCollector
-from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
-from rlpyt.algos.dqn.r2d1 import R2D1
 from rlpyt.agents.dqn.atari.atari_r2d1_agent import AtariR2d1Agent
-from rlpyt.runners.async_rl import AsyncRlEval
-from rlpyt.utils.logging.context import logger_context
-from rlpyt.utils.launching.variant import load_variant, update_config
-
+from rlpyt.algos.dqn.r2d1 import R2D1
+from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 from rlpyt.experiments.configs.atari.dqn.atari_r2d1 import configs
+from rlpyt.runners.async_rl import AsyncRlEval
+from rlpyt.samplers.async_.collectors import DbGpuResetCollector
+from rlpyt.samplers.async_.gpu_sampler import AsyncGpuSampler
+from rlpyt.utils.launching.affinity import affinity_from_code
+from rlpyt.utils.launching.variant import load_variant, update_config
+from rlpyt.utils.logging.context import logger_context
 
 
 def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
@@ -32,11 +30,7 @@ def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
     algo = R2D1(optim_kwargs=config["optim"], **config["algo"])
     agent = AtariR2d1Agent(model_kwargs=config["model"], **config["agent"])
     runner = AsyncRlEval(
-        algo=algo,
-        agent=agent,
-        sampler=sampler,
-        affinity=affinity,
-        **config["runner"]
+        algo=algo, agent=agent, sampler=sampler, affinity=affinity, **config["runner"]
     )
     name = "async_gpu_" + config["env"]["game"]
     with logger_context(log_dir, run_ID, name, config):

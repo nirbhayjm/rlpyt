@@ -1,4 +1,3 @@
-
 """
 Parallel sampler version of Atari DQN.  Increasing the number of parallel
 environmnets (sampler batch_B) should improve the efficiency of the forward
@@ -8,11 +7,11 @@ should improve the efficiency of the forward/backward passes during training.
 
 """
 
-from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
-from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
-from rlpyt.algos.dqn.dqn import DQN
 from rlpyt.agents.dqn.atari.atari_dqn_agent import AtariDqnAgent
+from rlpyt.algos.dqn.dqn import DQN
+from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 from rlpyt.runners.minibatch_rl import MinibatchRlEval
+from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 from rlpyt.utils.logging.context import logger_context
 
 
@@ -53,11 +52,18 @@ def build_and_train(game="pong", run_ID=0, cuda_idx=None, n_parallel=2):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--game', help='Atari game', default='pong')
-    parser.add_argument('--run_ID', help='run identifier (logging)', type=int, default=0)
-    parser.add_argument('--cuda_idx', help='gpu to use ', type=int, default=None)
-    parser.add_argument('--n_parallel', help='number of sampler workers', type=int, default=2)
+
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument("--game", help="Atari game", default="pong")
+    parser.add_argument(
+        "--run_ID", help="run identifier (logging)", type=int, default=0
+    )
+    parser.add_argument("--cuda_idx", help="gpu to use ", type=int, default=None)
+    parser.add_argument(
+        "--n_parallel", help="number of sampler workers", type=int, default=2
+    )
     args = parser.parse_args()
     build_and_train(
         game=args.game,

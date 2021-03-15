@@ -1,7 +1,6 @@
-
 from rlpyt.utils.launching.affinity import encode_affinity
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 script = "rlpyt/experiments/scripts/atari/dqn/train/atari_r2d1_async_gpu.py"
 affinity_code = encode_affinity(
@@ -13,7 +12,7 @@ affinity_code = encode_affinity(
     # hyperthread_offset=24,
     # optim_sample_share_gpu=True,
     n_socket=1,  # Force this.
-    alternating=False
+    alternating=False,
 )
 runs_per_setting = 2
 experiment_title = "atari_r2d1_async_gpu"

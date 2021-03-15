@@ -1,4 +1,3 @@
-
 import numpy as np
 
 from rlpyt.spaces.base import Space
@@ -7,7 +6,7 @@ from rlpyt.spaces.base import Space
 class FloatBox(Space):
     """A box in `R^n`, with specifiable bounds and dtype."""
 
-    def __init__(self, low, high, shape=None, null_value=0., dtype="float32"):
+    def __init__(self, low, high, shape=None, null_value=0.0, dtype="float32"):
         """
         Two kinds of valid input:
             * low and high are scalars, and shape is provided: Box(-1.0, 1.0, (3,4))
@@ -27,8 +26,10 @@ class FloatBox(Space):
 
     def sample(self):
         """Return a single sample from ``np.random.uniform``."""
-        return np.asarray(np.random.uniform(low=self.low, high=self.high,
-            size=self.shape), dtype=self.dtype)
+        return np.asarray(
+            np.random.uniform(low=self.low, high=self.high, size=self.shape),
+            dtype=self.dtype,
+        )
 
     def null_value(self):
         null = np.zeros(self.shape, dtype=self.dtype)

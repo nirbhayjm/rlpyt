@@ -1,13 +1,11 @@
-
-
 import torch
 import torch.nn.functional as F
 
-from rlpyt.models.mlp import MlpModel
 from rlpyt.models.conv2d import Conv2dModel
-from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
-from rlpyt.utils.logging import logger
+from rlpyt.models.mlp import MlpModel
 from rlpyt.models.running_mean_std import RunningMeanStdModel
+from rlpyt.utils.logging import logger
+from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
 
 def weight_init(m):
@@ -21,18 +19,18 @@ class AtariPgModel(torch.nn.Module):
     initialize new ones (if initializing new, must provide image_shape)."""
 
     def __init__(
-            self,
-            image_shape,
-            action_size,
-            hidden_sizes=512,
-            stop_conv_grad=False,
-            channels=None,  # Defaults below.
-            kernel_sizes=None,
-            strides=None,
-            paddings=None,
-            kiaming_init=True,
-            normalize_conv_out=False,
-            ):
+        self,
+        image_shape,
+        action_size,
+        hidden_sizes=512,
+        stop_conv_grad=False,
+        channels=None,  # Defaults below.
+        kernel_sizes=None,
+        strides=None,
+        paddings=None,
+        kiaming_init=True,
+        normalize_conv_out=False,
+    ):
         super().__init__()
         c, h, w = image_shape
         self.conv = Conv2dModel(
@@ -54,8 +52,8 @@ class AtariPgModel(torch.nn.Module):
         self.stop_conv_grad = stop_conv_grad
         logger.log(
             "Model stopping gradient at CONV."
-            if stop_conv_grad else
-            "Modeul using gradients on all parameters."
+            if stop_conv_grad
+            else "Modeul using gradients on all parameters."
         )
         if normalize_conv_out:
             # Havent' seen this make a difference yet.
@@ -67,7 +65,7 @@ class AtariPgModel(torch.nn.Module):
     def forward(self, observation, prev_action, prev_reward):
         if observation.dtype == torch.uint8:
             img = observation.type(torch.float)
-            img = img.mul_(1. / 255)
+            img = img.mul_(1.0 / 255)
         else:
             img = observation
 
@@ -95,7 +93,7 @@ class AtariPgModel(torch.nn.Module):
             with torch.no_grad():
                 if observation.dtype == torch.uint8:
                     img = observation.type(torch.float)
-                    img = img.mul_(1. / 255)
+                    img = img.mul_(1.0 / 255)
                 else:
                     img = observation
                 lead_dim, T, B, img_shape = infer_leading_dims(img, 3)
@@ -115,7 +113,6 @@ class AtariPgModel(torch.nn.Module):
     @property
     def conv_out_size(self):
         return self._conv_out_size
-    
 
 
 class AtariDqnModel(torch.nn.Module):
@@ -123,18 +120,18 @@ class AtariDqnModel(torch.nn.Module):
     initialize new ones (if initializing new, must provide image_shape)."""
 
     def __init__(
-            self,
-            image_shape,
-            action_size,
-            hidden_sizes=512,
-            stop_conv_grad=False,
-            channels=None,  # Defaults below.
-            kernel_sizes=None,
-            strides=None,
-            paddings=None,
-            kiaming_init=True,
-            normalize_conv_out=False,
-            ):
+        self,
+        image_shape,
+        action_size,
+        hidden_sizes=512,
+        stop_conv_grad=False,
+        channels=None,  # Defaults below.
+        kernel_sizes=None,
+        strides=None,
+        paddings=None,
+        kiaming_init=True,
+        normalize_conv_out=False,
+    ):
         super().__init__()
         c, h, w = image_shape
         self.conv = Conv2dModel(
@@ -156,8 +153,8 @@ class AtariDqnModel(torch.nn.Module):
         self.stop_conv_grad = stop_conv_grad
         logger.log(
             "Model stopping gradient at CONV."
-            if stop_conv_grad else
-            "Modeul using gradients on all parameters."
+            if stop_conv_grad
+            else "Modeul using gradients on all parameters."
         )
         if normalize_conv_out:
             logger.log("Model normalizing conv output across all pixels.")
@@ -168,7 +165,7 @@ class AtariDqnModel(torch.nn.Module):
     def forward(self, observation, prev_action, prev_reward):
         if observation.dtype == torch.uint8:
             img = observation.type(torch.float)
-            img = img.mul_(1. / 255)
+            img = img.mul_(1.0 / 255)
         else:
             img = observation
 
@@ -194,7 +191,7 @@ class AtariDqnModel(torch.nn.Module):
             with torch.no_grad():
                 if observation.dtype == torch.uint8:
                     img = observation.type(torch.float)
-                    img = img.mul_(1. / 255)
+                    img = img.mul_(1.0 / 255)
                 else:
                     img = observation
                 lead_dim, T, B, img_shape = infer_leading_dims(img, 3)

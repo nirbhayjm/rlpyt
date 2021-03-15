@@ -1,13 +1,11 @@
-
-
 from rlpyt.algos.base import RlAlgorithm
-from rlpyt.replays.non_sequence.uniform import UniformReplayBuffer
 from rlpyt.replays.non_sequence.frame import UniformReplayFrameBuffer
+from rlpyt.replays.non_sequence.uniform import UniformReplayBuffer
 from rlpyt.utils.collections import namedarraytuple
 
-
-SamplesToBuffer = namedarraytuple("SamplesToBuffer",
-    ["observation", "action", "reward", "done"])
+SamplesToBuffer = namedarraytuple(
+    "SamplesToBuffer", ["observation", "action", "reward", "done"]
+)
 
 
 class ReplaySaverAlgo(RlAlgorithm):
@@ -23,10 +21,20 @@ class ReplaySaverAlgo(RlAlgorithm):
         self.frame_buffer = frame_buffer
         self.optimizer = DummyOptimizer()
 
-    def initialize(self, agent, n_itr, batch_spec, mid_batch_reset=False,
-            examples=None, world_size=1, rank=0):
+    def initialize(
+        self,
+        agent,
+        n_itr,
+        batch_spec,
+        mid_batch_reset=False,
+        examples=None,
+        world_size=1,
+        rank=0,
+    ):
         example_to_buffer = self.examples_to_buffer(examples)
-        ReplayCls = UniformReplayFrameBuffer if self.frame_buffer else UniformReplayBuffer
+        ReplayCls = (
+            UniformReplayFrameBuffer if self.frame_buffer else UniformReplayBuffer
+        )
         self.replay_buffer = ReplayCls(
             example=example_to_buffer,
             size=self.replay_size,
@@ -51,7 +59,7 @@ class ReplaySaverAlgo(RlAlgorithm):
 
     def samples_to_buffer(self, samples):
         """Defines how to add data from sampler into the replay buffer. Called
-        in optimize_agent() if samples are provided to that method.  In 
+        in optimize_agent() if samples are provided to that method.  In
         asynchronous mode, will be called in the memory_copier process."""
         return SamplesToBuffer(
             observation=samples.env.observation,
@@ -63,5 +71,6 @@ class ReplaySaverAlgo(RlAlgorithm):
 
 class DummyOptimizer:
     """So that snapshot can be saved."""
+
     def state_dict(self):
         return None

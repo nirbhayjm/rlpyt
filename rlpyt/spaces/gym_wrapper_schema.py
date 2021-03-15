@@ -1,9 +1,8 @@
-
 import numpy as np
 from gym.spaces.dict import Dict as GymDict
 
-from rlpyt.utils.collections import NamedTupleSchema, NamedTuple
 from rlpyt.spaces.composite import Composite
+from rlpyt.utils.collections import NamedTuple, NamedTupleSchema
 
 
 class GymSpaceWrapper:
@@ -13,10 +12,11 @@ class GymSpaceWrapper:
     inside the initialization of the environment wrapper for a gym environment.
     """
 
-    def __init__(self, space, null_value=0, name="obs", force_float32=True,
-                 schemas=None):
-        """Input ``space`` is a gym space instance.  
-        
+    def __init__(
+        self, space, null_value=0, name="obs", force_float32=True, schemas=None
+    ):
+        """Input ``space`` is a gym space instance.
+
         Input ``name`` governs naming of internal NamedTupleSchemas used to
         store Gym info.
         """
@@ -31,23 +31,28 @@ class GymSpaceWrapper:
             if nt is None:
                 nt = NamedTupleSchema(name, [k for k in space.spaces.keys()])
                 schemas[name] = nt  # Put at module level for pickle.
-            elif not (isinstance(nt, NamedTupleSchema) and
-                    sorted(nt._fields) ==
-                    sorted([k for k in space.spaces.keys()])):
+            elif not (
+                isinstance(nt, NamedTupleSchema)
+                and sorted(nt._fields) == sorted([k for k in space.spaces.keys()])
+            ):
                 raise ValueError(f"Name clash in schemas: {name}.")
-            spaces = [GymSpaceWrapper(
-                space=v,
-                null_value=null_value,
-                name="_".join([name, k]),
-                force_float32=force_float32,
-                schemas=schemas)
-                for k, v in space.spaces.items()]
+            spaces = [
+                GymSpaceWrapper(
+                    space=v,
+                    null_value=null_value,
+                    name="_".join([name, k]),
+                    force_float32=force_float32,
+                    schemas=schemas,
+                )
+                for k, v in space.spaces.items()
+            ]
             self.space = Composite(spaces, nt)
             self._dtype = None
         else:
             self.space = space
-            self._dtype = np.float32 if (space.dtype == np.float64 and
-                force_float32) else None
+            self._dtype = (
+                np.float32 if (space.dtype == np.float64 and force_float32) else None
+            )
 
     def sample(self):
         """Returns a single sample in a namedtuple (for composite) or numpy
@@ -125,8 +130,7 @@ class GymSpaceWrapper:
 
 def dict_to_nt(value, name, schemas):
     if isinstance(value, dict):
-        values = {k: dict_to_nt(v, "_".join([name, k]))
-            for k, v in value.items()}
+        values = {k: dict_to_nt(v, "_".join([name, k])) for k, v in value.items()}
         return schemas[name](**values)
     if isinstance(value, np.ndarray) and value.dtype == np.float64:
         return np.asarray(value, dtype=np.float32)

@@ -1,10 +1,9 @@
-
-import sys
 import copy
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2
@@ -13,7 +12,9 @@ num_computers = int(args[1])
 
 print(f"MY_COMPUTER: {my_computer},  NUM_COMPUTERS: {num_computers}")
 
-script = "rlpyt/ul/experiments/scripts/rl_with_ul/dmlab/train/dmlab_ppo_rl_with_ul_alt.py"
+script = (
+    "rlpyt/ul/experiments/scripts/rl_with_ul/dmlab/train/dmlab_ppo_rl_with_ul_alt.py"
+)
 
 affinity_code = quick_affinity_code(contexts_per_gpu=2, alternating=True)
 runs_per_setting = 2
@@ -28,8 +29,11 @@ ul_update_schedules = ["constant_0"]
 min_steps_rl = [0]
 values = list(zip(stop_conv_grads, ul_update_schedules, min_steps_rl))
 dir_names = ["{}stpcnv_{}_minrl{}".format(*v) for v in values]
-keys = [("model", "stop_conv_grad"), ("algo", "ul_update_schedule"),
-    ("algo", "min_steps_rl")]
+keys = [
+    ("model", "stop_conv_grad"),
+    ("algo", "ul_update_schedule"),
+    ("algo", "min_steps_rl"),
+]
 variant_levels_1.append(VariantLevel(keys, values, dir_names))
 
 
@@ -38,8 +42,7 @@ min_steps_ul = [2e4]
 min_steps_rl = [1e5]
 values = list(zip(stop_conv_grads, min_steps_ul, min_steps_rl))
 dir_names = ["{}stpcnvgrd_{}ulminstepsrl{}".format(*v) for v in values]
-keys = [("model", "stop_conv_grad"), ("algo", "min_steps_ul"),
-    ("algo", "min_steps_rl")]
+keys = [("model", "stop_conv_grad"), ("algo", "min_steps_ul"), ("algo", "min_steps_rl")]
 variant_levels_2.append(VariantLevel(keys, values, dir_names))
 
 ul_update_schedules = ["constant_2"]
@@ -48,7 +51,7 @@ dir_names = ["{}".format(*v) for v in values]
 keys = [("algo", "ul_update_schedule")]
 variant_levels_2.append(VariantLevel(keys, values, dir_names))
 
-ul_pri_alphas = [0., 1., 10.]
+ul_pri_alphas = [0.0, 1.0, 10.0]
 values = list(zip(ul_pri_alphas))
 dir_names = ["{}prialpha".format(*v) for v in values]
 keys = [("algo", "ul_pri_alpha")]
@@ -59,8 +62,7 @@ min_steps_ul = [2e4]
 min_steps_rl = [1e5]
 values = list(zip(stop_conv_grads, min_steps_ul, min_steps_rl))
 dir_names = ["{}stpcnvgrd_{}ulminstepsrl{}".format(*v) for v in values]
-keys = [("model", "stop_conv_grad"), ("algo", "min_steps_ul"),
-    ("algo", "min_steps_rl")]
+keys = [("model", "stop_conv_grad"), ("algo", "min_steps_ul"), ("algo", "min_steps_rl")]
 variant_levels_3.append(VariantLevel(keys, values, dir_names))
 
 ul_update_schedules = ["constant_2", "constant_4"]
@@ -69,7 +71,7 @@ dir_names = ["{}".format(*v) for v in values]
 keys = [("algo", "ul_update_schedule")]
 variant_levels_3.append(VariantLevel(keys, values, dir_names))
 
-ul_pri_alphas = [0., 10.]
+ul_pri_alphas = [0.0, 10.0]
 values = list(zip(ul_pri_alphas))
 dir_names = ["{}prialpha".format(*v) for v in values]
 keys = [("algo", "ul_pri_alpha")]
@@ -136,4 +138,3 @@ run_experiments(
     log_dirs=my_log_dirs,
     common_args=(default_config_key,),
 )
-

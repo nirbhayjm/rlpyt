@@ -1,26 +1,25 @@
-
-import sys
 import pprint
+import sys
 
-from rlpyt.utils.launching.affinity import affinity_from_code
-from rlpyt.samplers.serial.sampler import SerialSampler
-from rlpyt.samplers.parallel.cpu.collectors import CpuResetCollector
 from rlpyt.adam.dmcontrol import make
-from rlpyt.ul.algos.sac_ul import SacUl
-from rlpyt.ul.agents.dmc_sac_with_ul_agent import SacWithUlAgent
 from rlpyt.adam.envstep_runner import MinibatchRlEvalEnvStep
-from rlpyt.utils.logging.context import logger_context
-# from rlpyt.utils.launching.variant import load_variant, update_config
-
+from rlpyt.samplers.parallel.cpu.collectors import CpuResetCollector
+from rlpyt.samplers.serial.sampler import SerialSampler
+from rlpyt.ul.agents.dmc_sac_with_ul_agent import SacWithUlAgent
+from rlpyt.ul.algos.sac_ul import SacUl
 from rlpyt.ul.experiments.configs.dmc_sac_with_ul import configs
+from rlpyt.utils.launching.affinity import affinity_from_code
+from rlpyt.utils.logging.context import logger_context
+
+# from rlpyt.utils.launching.variant import load_variant, update_config
 
 
 def build_and_train(
-        slot_affinity_code="0slt_0gpu_4cpu_4cpr",
-        log_dir="test",
-        run_ID="0",
-        config_key="sac_ul_compress",
-        ):
+    slot_affinity_code="0slt_0gpu_4cpu_4cpr",
+    log_dir="test",
+    run_ID="0",
+    config_key="sac_ul_compress",
+):
     affinity = affinity_from_code(slot_affinity_code)
     config = configs[config_key]
     # variant = load_variant(log_dir)
@@ -54,7 +53,8 @@ def build_and_train(
         fc1_kwargs=config["fc1"],
         pi_model_kwargs=config["pi_model"],
         q_model_kwargs=config["q_model"],
-        **config["agent"])
+        **config["agent"]
+    )
     runner = MinibatchRlEvalEnvStep(
         algo=algo,
         agent=agent,

@@ -1,8 +1,7 @@
-
 import multiprocessing as mp
 
-from rlpyt.utils.seed import make_seed
 from rlpyt.samplers.buffer import build_samples_buffer
+from rlpyt.utils.seed import make_seed
 from rlpyt.utils.synchronize import drain_queue
 
 
@@ -16,8 +15,9 @@ class AsyncSamplerMixin:
     # Master runner methods.
     ###########################################################################
 
-    def async_initialize(self, agent, bootstrap_value=False,
-            traj_info_kwargs=None, seed=None):
+    def async_initialize(
+        self, agent, bootstrap_value=False, traj_info_kwargs=None, seed=None
+    ):
         """Instantiate an example environment and use it to initialize the
         agent (on shared memory).  Pre-allocate a double-buffer for sample
         batches, and return that buffer along with example data (e.g.
@@ -27,13 +27,30 @@ class AsyncSamplerMixin:
         # Construct an example of each kind of data that needs to be stored.
         env = self.EnvCls(**self.env_kwargs)
         # Sampler always receives new params through shared memory:
-        agent.initialize(env.spaces, share_memory=True,
-            global_B=self.batch_spec.B, env_ranks=list(range(self.batch_spec.B)))
-        _, samples_np, examples = build_samples_buffer(agent, env,
-            self.batch_spec, bootstrap_value, agent_shared=True, env_shared=True,
-            subprocess=True)  # Would like subprocess=True, but might hang?
-        _, samples_np2, _ = build_samples_buffer(agent, env, self.batch_spec,
-            bootstrap_value, agent_shared=True, env_shared=True, subprocess=True)
+        agent.initialize(
+            env.spaces,
+            share_memory=True,
+            global_B=self.batch_spec.B,
+            env_ranks=list(range(self.batch_spec.B)),
+        )
+        _, samples_np, examples = build_samples_buffer(
+            agent,
+            env,
+            self.batch_spec,
+            bootstrap_value,
+            agent_shared=True,
+            env_shared=True,
+            subprocess=True,
+        )  # Would like subprocess=True, but might hang?
+        _, samples_np2, _ = build_samples_buffer(
+            agent,
+            env,
+            self.batch_spec,
+            bootstrap_value,
+            agent_shared=True,
+            env_shared=True,
+            subprocess=True,
+        )
         env.close()
         del env
         if traj_info_kwargs:
@@ -83,13 +100,13 @@ class AsyncParallelSamplerMixin(AsyncSamplerMixin):
         # CPU maybe only needs it in sync?
 
     def _assemble_workers_kwargs(self, affinity, seed, n_envs_list):
-        workers_kwargs = super()._assemble_workers_kwargs(affinity, seed,
-            n_envs_list)
+        workers_kwargs = super()._assemble_workers_kwargs(affinity, seed, n_envs_list)
         i_env = 0  # OK for GPU, because will already hold slice from global.
         for rank, w_kwargs in enumerate(workers_kwargs):
             n_envs = n_envs_list[rank]
             slice_B = slice(i_env, i_env + n_envs)
-            w_kwargs["samples_np"] = tuple(buf[:, slice_B]
-                for buf in self.double_buffer)  # Replace.
+            w_kwargs["samples_np"] = tuple(
+                buf[:, slice_B] for buf in self.double_buffer
+            )  # Replace.
             i_env += n_envs
         return workers_kwargs

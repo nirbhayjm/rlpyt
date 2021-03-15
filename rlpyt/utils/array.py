@@ -1,4 +1,3 @@
-
 import numpy as np
 
 
@@ -12,7 +11,7 @@ def select_at_indexes(indexes, array):
     num = int(np.prod(indexes.shape))
     a_flat = array.reshape((num,) + array.shape[dim:])
     s_flat = a_flat[np.arange(num), indexes.reshape(-1)]
-    selected = s_flat.reshape(array.shape[:dim] + array.shape[dim + 1:])
+    selected = s_flat.reshape(array.shape[:dim] + array.shape[dim + 1 :])
     return selected
 
 
@@ -48,7 +47,7 @@ def infer_leading_dims(array, dim):
     where found.
     """
     assert array.ndim in (dim, dim + 1, dim + 2)
-    shape = array.shape[len(array.shape) - dim:]
+    shape = array.shape[len(array.shape) - dim :]
     T = B = 1
     has_T = has_B = False
     if array.ndim == dim + 2:

@@ -1,11 +1,13 @@
-
 import numpy as np
 
-from rlpyt.samplers.collectors import (DecorrelatingStartCollector,
-    BaseEvalCollector)
 from rlpyt.agents.base import AgentInputs
-from rlpyt.utils.buffer import (torchify_buffer, numpify_buffer, buffer_from_example,
-    buffer_method)
+from rlpyt.samplers.collectors import BaseEvalCollector, DecorrelatingStartCollector
+from rlpyt.utils.buffer import (
+    buffer_from_example,
+    buffer_method,
+    numpify_buffer,
+    torchify_buffer,
+)
 
 
 class CpuResetCollector(DecorrelatingStartCollector):
@@ -16,7 +18,7 @@ class CpuResetCollector(DecorrelatingStartCollector):
     typically indicated by the environment returning ``done=True``.  But this
     collector defers to the ``done`` signal only after looking for
     ``env_info["traj_done"]``, so that RL episodes can end without a call to
-    ``env_reset()`` (e.g. used for episodic lives in the Atari env).  The 
+    ``env_reset()`` (e.g. used for episodic lives in the Atari env).  The
     agent gets reset based solely on ``done``.
     """
 
@@ -40,8 +42,9 @@ class CpuResetCollector(DecorrelatingStartCollector):
             for b, env in enumerate(self.envs):
                 # Environment inputs and outputs are numpy arrays.
                 o, r, d, env_info = env.step(action[b])
-                traj_infos[b].step(observation[b], action[b], r, d, agent_info[b],
-                    env_info)
+                traj_infos[b].step(
+                    observation[b], action[b], r, d, agent_info[b], env_info
+                )
                 if getattr(env_info, "traj_done", d):
                     completed_infos.append(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()
@@ -90,7 +93,8 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
         self.need_reset = np.zeros(len(self.envs), dtype=np.bool)
         self.done = np.zeros(len(self.envs), dtype=np.bool)
         self.temp_observation = buffer_method(
-            self.samples_np.env.observation[0, :len(self.envs)], "copy")
+            self.samples_np.env.observation[0, : len(self.envs)], "copy"
+        )
 
     def collect_batch(self, agent_inputs, traj_infos, itr):
         # Numpy arrays can be written to from numpy arrays or torch tensors
@@ -120,8 +124,9 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
                     continue
                 # Environment inputs and outputs are numpy arrays.
                 o, r, d, env_info = env.step(action[b])
-                traj_infos[b].step(observation[b], action[b], r, d, agent_info[b],
-                    env_info)
+                traj_infos[b].step(
+                    observation[b], action[b], r, d, agent_info[b], env_info
+                )
                 if getattr(env_info, "traj_done", d):
                     completed_infos.append(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()
@@ -155,7 +160,7 @@ class CpuWaitResetCollector(DecorrelatingStartCollector):
 
 
 class CpuEvalCollector(BaseEvalCollector):
-    """Offline agent evaluation collector which calls ``agent.step()`` in 
+    """Offline agent evaluation collector which calls ``agent.step()`` in
     sampling loop.  Immediately resets any environment which finishes a
     trajectory.  Stops when the max time-steps have been reached, or when
     signaled by the master process (i.e. if enough trajectories have
@@ -170,8 +175,9 @@ class CpuEvalCollector(BaseEvalCollector):
         observation = buffer_from_example(observations[0], len(self.envs))
         for b, o in enumerate(observations):
             observation[b] = o
-        action = buffer_from_example(self.envs[0].action_space.null_value(),
-            len(self.envs))
+        action = buffer_from_example(
+            self.envs[0].action_space.null_value(), len(self.envs)
+        )
         reward = np.zeros(len(self.envs), dtype="float32")
         obs_pyt, act_pyt, rew_pyt = torchify_buffer((observation, action, reward))
         self.agent.reset()
@@ -181,8 +187,9 @@ class CpuEvalCollector(BaseEvalCollector):
             action = numpify_buffer(act_pyt)
             for b, env in enumerate(self.envs):
                 o, r, d, env_info = env.step(action[b])
-                traj_infos[b].step(observation[b], action[b], r, d,
-                    agent_info[b], env_info)
+                traj_infos[b].step(
+                    observation[b], action[b], r, d, agent_info[b], env_info
+                )
                 if getattr(env_info, "traj_done", d):
                     self.traj_infos_queue.put(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()

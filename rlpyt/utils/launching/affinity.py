@@ -1,4 +1,3 @@
-
 from rlpyt.utils.collections import AttrDict
 
 # Readable-to-less-readable abbreviations.
@@ -20,13 +19,26 @@ OPTIM_SAMPLE_SHARE_GPU = "oss"
 ALTERNATING = "alt"
 SET_AFFINITY = "saf"
 
-ABBREVS = [N_GPU, CONTEXTS_PER_GPU, GPU_PER_RUN, N_CPU_CORE,
-    HYPERTHREAD_OFFSET, N_SOCKET, CPU_PER_RUN, CPU_PER_WORKER, CPU_RESERVED,
-    ASYNC_SAMPLE, SAMPLE_GPU_PER_RUN, OPTIM_SAMPLE_SHARE_GPU,
-    ALTERNATING, SET_AFFINITY]
+ABBREVS = [
+    N_GPU,
+    CONTEXTS_PER_GPU,
+    GPU_PER_RUN,
+    N_CPU_CORE,
+    HYPERTHREAD_OFFSET,
+    N_SOCKET,
+    CPU_PER_RUN,
+    CPU_PER_WORKER,
+    CPU_RESERVED,
+    ASYNC_SAMPLE,
+    SAMPLE_GPU_PER_RUN,
+    OPTIM_SAMPLE_SHARE_GPU,
+    ALTERNATING,
+    SET_AFFINITY,
+]
 
 
 # API
+
 
 def quick_affinity_code(n_parallel=None, use_gpu=True, contexts_per_gpu=1):
     """Tried to autodetect hardware resources and divide them evenly among learning runs.
@@ -38,10 +50,12 @@ def quick_affinity_code(n_parallel=None, use_gpu=True, contexts_per_gpu=1):
     if not (use_gpu or n_parallel):
         raise ValueError("Either use_gpu must be True or n_parallel > 0 must be given.")
     import psutil
+
     # n_cpu_core = psutil.cpu_count(logical=False)  # sometimes gives bad results
     n_cpu_core = psutil.cpu_count() // 2  # assume hyperthreads will be counted
     if use_gpu:
         import torch
+
         n_gpu = torch.cuda.device_count()
     else:
         n_gpu = 0
@@ -50,8 +64,9 @@ def quick_affinity_code(n_parallel=None, use_gpu=True, contexts_per_gpu=1):
             n_gpu = min(n_parallel, n_gpu)
         n_runs = n_gpu * contexts_per_gpu
         n_cpu_core = (n_cpu_core // n_runs) * n_runs  # Same for all.
-        return encode_affinity(n_cpu_core=n_cpu_core, n_gpu=n_gpu,
-            contexts_per_gpu=contexts_per_gpu)
+        return encode_affinity(
+            n_cpu_core=n_cpu_core, n_gpu=n_gpu, contexts_per_gpu=contexts_per_gpu
+        )
     else:
         if not n_parallel:
             raise ValueError(
@@ -60,27 +75,26 @@ def quick_affinity_code(n_parallel=None, use_gpu=True, contexts_per_gpu=1):
         n_parallel = min(n_parallel, n_cpu_core)
         n_cpu_core = (n_cpu_core // n_parallel) * n_parallel  # Same for all.
         cpu_per_run = n_cpu_core // n_parallel
-        return encode_affinity(n_cpu_core=n_cpu_core, n_gpu=0,
-            cpu_per_run=cpu_per_run)
+        return encode_affinity(n_cpu_core=n_cpu_core, n_gpu=0, cpu_per_run=cpu_per_run)
 
 
 def encode_affinity(
-        n_cpu_core=1,  # Total number to use on machine (not virtual).
-        n_gpu=0,  # Total number to use on machine.
-        contexts_per_gpu=1,  # e.g. 2 will put two experiments per GPU.
-        gpu_per_run=1,  # For multi-GPU optimizaion.
-        cpu_per_run=1,  # Specify if not using GPU.
-        cpu_per_worker=1,  # Use 1 unless environment is multi-threaded.
-        cpu_reserved=0,  # Number CPU to reserve per GPU.
-        hyperthread_offset=None,  # Leave None for auto-detect.
-        n_socket=None,  # Leave None for auto-detect.
-        run_slot=None,  # Leave None in `run` script, but specified in `train` script.
-        async_sample=False,  # True if asynchronous sampling / optimization.
-        sample_gpu_per_run=0,  # For asynchronous sampling.
-        optim_sample_share_gpu=False,  # Async sampling, overrides sample_gpu.
-        alternating=False,  # True for altenating sampler.
-        set_affinity=True,  # Everything same except psutil.Process().cpu_affinity(cpus)
-        ):
+    n_cpu_core=1,  # Total number to use on machine (not virtual).
+    n_gpu=0,  # Total number to use on machine.
+    contexts_per_gpu=1,  # e.g. 2 will put two experiments per GPU.
+    gpu_per_run=1,  # For multi-GPU optimizaion.
+    cpu_per_run=1,  # Specify if not using GPU.
+    cpu_per_worker=1,  # Use 1 unless environment is multi-threaded.
+    cpu_reserved=0,  # Number CPU to reserve per GPU.
+    hyperthread_offset=None,  # Leave None for auto-detect.
+    n_socket=None,  # Leave None for auto-detect.
+    run_slot=None,  # Leave None in `run` script, but specified in `train` script.
+    async_sample=False,  # True if asynchronous sampling / optimization.
+    sample_gpu_per_run=0,  # For asynchronous sampling.
+    optim_sample_share_gpu=False,  # Async sampling, overrides sample_gpu.
+    alternating=False,  # True for altenating sampler.
+    set_affinity=True,  # Everything same except psutil.Process().cpu_affinity(cpus)
+):
     """Encodes the hardware configuration into a string (with meanings defined
     in this file) which can be passed as a command line argument to call the
     training script. Use in overall experiments setup script to specify
@@ -167,15 +181,23 @@ def make_affinity(run_slot=0, **kwargs):
 
 # Helpers
 
+
 def get_n_socket():
     import subprocess
-    return max(1, int(subprocess.check_output(
-        'cat /proc/cpuinfo | grep "physical id" | sort -u | wc -l',
-        shell=True)))
+
+    return max(
+        1,
+        int(
+            subprocess.check_output(
+                'cat /proc/cpuinfo | grep "physical id" | sort -u | wc -l', shell=True
+            )
+        ),
+    )
 
 
 def get_hyperthread_offset():
     import psutil  # (If returns 0, will not try to use hyperthreads.)
+
     # UNRELIABLE:
     # hto = psutil.cpu_count() - psutil.cpu_count(logical=False)
     vcpu = psutil.cpu_count()
@@ -216,8 +238,9 @@ def decode_affinity(affinity_code):
     return aff_kwargs
 
 
-def build_cpu_affinity(slt, cpu, cpr, cpw=1, hto=None, res=0, skt=1, gpu=0,
-        alt=0, saf=1):
+def build_cpu_affinity(
+    slt, cpu, cpr, cpw=1, hto=None, res=0, skt=1, gpu=0, alt=0, saf=1
+):
     assert gpu == 0
     assert cpu % cpr == 0
     hto = cpu if hto is None else hto  # Default is None, 0 is OFF.
@@ -256,8 +279,9 @@ def build_cpu_affinity(slt, cpu, cpr, cpw=1, hto=None, res=0, skt=1, gpu=0,
     return affinity
 
 
-def build_gpu_affinity(slt, gpu, cpu, cxg=1, cpw=1, hto=None, res=0, skt=1,
-        alt=0, saf=1):
+def build_gpu_affinity(
+    slt, gpu, cpu, cxg=1, cpw=1, hto=None, res=0, skt=1, alt=0, saf=1
+):
     """Divides CPUs evenly among GPUs."""
     n_ctx = gpu * cxg
     assert slt < n_ctx
@@ -265,23 +289,30 @@ def build_gpu_affinity(slt, gpu, cpu, cxg=1, cpw=1, hto=None, res=0, skt=1,
     cpr = cpu // n_ctx
     if cxg > 1:
         slt = (slt % gpu) * cxg + slt // gpu  # Spread over GPUs first.
-    affinity = build_cpu_affinity(slt, cpu, cpr,
-        cpw=cpw, hto=hto, res=res, skt=skt, gpu=0, alt=alt, saf=saf)
+    affinity = build_cpu_affinity(
+        slt, cpu, cpr, cpw=cpw, hto=hto, res=res, skt=skt, gpu=0, alt=alt, saf=saf
+    )
     affinity["cuda_idx"] = slt // cxg
     return affinity
 
 
-def build_multigpu_affinity(run_slot, gpu, cpu, gpr=1, cpw=1, hto=None, res=0,
-        skt=1, alt=0, saf=1):
-    return [build_gpu_affinity(slt, gpu, cpu, cxg=1, cpw=cpw, hto=hto, res=res,
-        skt=skt, alt=alt, saf=saf) for slt in range(run_slot * gpr, (run_slot + 1) * gpr)]
+def build_multigpu_affinity(
+    run_slot, gpu, cpu, gpr=1, cpw=1, hto=None, res=0, skt=1, alt=0, saf=1
+):
+    return [
+        build_gpu_affinity(
+            slt, gpu, cpu, cxg=1, cpw=cpw, hto=hto, res=res, skt=skt, alt=alt, saf=saf
+        )
+        for slt in range(run_slot * gpr, (run_slot + 1) * gpr)
+    ]
 
 
-def build_async_affinity(run_slot, gpu, cpu, gpr=1, sgr=0, oss=0, cpw=1,
-        hto=None, res=1, skt=1, alt=0, saf=1):
+def build_async_affinity(
+    run_slot, gpu, cpu, gpr=1, sgr=0, oss=0, cpw=1, hto=None, res=1, skt=1, alt=0, saf=1
+):
     oss = bool(oss)
     sgr = gpr if oss else sgr
-    total_gpr = (gpr + sgr * (not oss))
+    total_gpr = gpr + sgr * (not oss)
     n_run_slots = gpu // total_gpr
     assert run_slot < n_run_slots
     cpr = cpu // n_run_slots
@@ -301,8 +332,9 @@ def build_async_affinity(run_slot, gpu, cpu, gpr=1, sgr=0, oss=0, cpw=1,
         low_opt_gpu = my_skt * gpu_per_skt + run_in_skt * total_gpr
         high_opt_gpu = low_opt_gpu + gpr
         my_opt_gpus = list(range(low_opt_gpu, high_opt_gpu))
-        my_smp_gpus = (my_opt_gpus if oss else
-            list(range(high_opt_gpu, high_opt_gpu + sgr)))
+        my_smp_gpus = (
+            my_opt_gpus if oss else list(range(high_opt_gpu, high_opt_gpu + sgr))
+        )
     else:  # One run takes more than one socket: spread opt gpus across sockets.
         skt_per_run = skt // n_run_slots
         low_skt = run_slot * skt_per_run
@@ -324,13 +356,16 @@ def build_async_affinity(run_slot, gpu, cpu, gpr=1, sgr=0, oss=0, cpw=1,
         gpu_in_skt = opt_gpu % gpu_per_skt
         gpu_skt = opt_gpu // gpu_per_skt
         gpu_res = i if run_per_skt >= 1 else gpu_in_skt
-        low_opt_core = (gpu_skt * cpu_per_skt + run_in_skt * cpr +
-            gpu_res * res)
+        low_opt_core = gpu_skt * cpu_per_skt + run_in_skt * cpr + gpu_res * res
         high_opt_core = low_opt_core + res
         opt_cores = tuple(range(low_opt_core, high_opt_core))
         opt_cpus = get_master_cpus(opt_cores, hto)
-        opt_affinity = dict(cpus=opt_cpus, cuda_idx=opt_gpu,
-            torch_threads=len(opt_cores), set_affinity=bool(saf))
+        opt_affinity = dict(
+            cpus=opt_cpus,
+            cuda_idx=opt_gpu,
+            torch_threads=len(opt_cores),
+            set_affinity=bool(saf),
+        )
         opt_affinities.append(opt_affinity)
         all_cpus += opt_cpus
     wrkr_per_smp = smp_cpr // cpw
@@ -339,10 +374,13 @@ def build_async_affinity(run_slot, gpu, cpu, gpr=1, sgr=0, oss=0, cpw=1,
     for i, smp_gpu in enumerate(my_smp_gpus):
         gpu_skt = smp_gpu // gpu_per_skt
         gpu_in_skt = smp_gpu % gpu_per_skt
-        smp_cpu_off = (i if run_per_skt >= 1 else
-            gpu_in_skt - (gpr // skt_per_run))
-        low_smp_core = (gpu_skt * cpu_per_skt + run_in_skt * cpr +
-            (gpr // skt_per_run) * res + smp_cpu_off * smp_cpg)
+        smp_cpu_off = i if run_per_skt >= 1 else gpu_in_skt - (gpr // skt_per_run)
+        low_smp_core = (
+            gpu_skt * cpu_per_skt
+            + run_in_skt * cpr
+            + (gpr // skt_per_run) * res
+            + smp_cpu_off * smp_cpg
+        )
         high_smp_core = low_smp_core + smp_cpg
         master_cores = tuple(range(low_smp_core, high_smp_core))
         master_cpus = get_master_cpus(master_cores, hto)
@@ -361,16 +399,15 @@ def build_async_affinity(run_slot, gpu, cpu, gpr=1, sgr=0, oss=0, cpw=1,
         all_cpus += master_cpus
     if not smp_affinities:  # sgr==0; CPU sampler.
         if total_gpr <= gpu_per_skt:
-            low_smp_core = (my_skt * cpu_per_skt + run_in_skt * cpr +
-                gpr * res)
+            low_smp_core = my_skt * cpu_per_skt + run_in_skt * cpr + gpr * res
             master_cores = tuple(range(low_smp_core, low_smp_core + smp_cpr))
         else:
             master_cores = tuple()
             for s in range(skt_per_run):
-                low_smp_core = ((low_skt + s) * cpu_per_skt +
-                    (gpr // gpu_per_skt) * res)
-                master_cores += tuple(range(low_smp_core, low_smp_core +
-                    smp_cpr // skt_per_run))
+                low_smp_core = (low_skt + s) * cpu_per_skt + (gpr // gpu_per_skt) * res
+                master_cores += tuple(
+                    range(low_smp_core, low_smp_core + smp_cpr // skt_per_run)
+                )
         master_cpus = get_master_cpus(master_cores, hto)
         workers_cpus = get_workers_cpus(master_cores, cpw, hto, alt)
         smp_affinities = AttrDict(
@@ -409,13 +446,13 @@ def get_master_cpus(cores, hto):
 
 
 def get_workers_cpus(cores, cpw, hto, alt):
-    cores = cores[:(len(cores) // cpw) * cpw]  # No worker less than cpw.
-    cpus = tuple(cores[i:i + cpw]
-        for i in range(0, len(cores), cpw))
+    cores = cores[: (len(cores) // cpw) * cpw]  # No worker less than cpw.
+    cpus = tuple(cores[i : i + cpw] for i in range(0, len(cores), cpw))
     if hto > 0:
         hyperthreads = tuple(c + hto for c in cores)
-        hyperthreads = tuple(hyperthreads[i:i + cpw]
-            for i in range(0, len(cores), cpw))
+        hyperthreads = tuple(
+            hyperthreads[i : i + cpw] for i in range(0, len(cores), cpw)
+        )
         if alt:
             cpus += hyperthreads
         else:
@@ -425,8 +462,9 @@ def get_workers_cpus(cores, cpw, hto, alt):
     return cpus
 
 
-def build_affinities_gpu_1cpu_drive(slt, gpu, cpu, cxg=1, gpr=1, cpw=1,
-        hto=None, skt=1):
+def build_affinities_gpu_1cpu_drive(
+    slt, gpu, cpu, cxg=1, gpr=1, cpw=1, hto=None, skt=1
+):
     """OLD.
     Divides CPUs evenly among GPUs, with one CPU held open for each GPU, to
     drive it.  Workers assigned on the remaining CPUs.  Master permitted to use
@@ -457,8 +495,12 @@ def build_affinities_gpu_1cpu_drive(slt, gpu, cpu, cxg=1, gpr=1, cpw=1,
     gpu_core = gpu_in_skt + my_skt * cpu_per_skt
     ctx_in_gpu = my_ctx % cxg
 
-    min_sim_core = (my_skt * cpu_per_skt + gpu_per_skt +
-        gpu_in_skt * sim_cpu_per_gpu + ctx_in_gpu * sim_cpu_per_ctx)
+    min_sim_core = (
+        my_skt * cpu_per_skt
+        + gpu_per_skt
+        + gpu_in_skt * sim_cpu_per_gpu
+        + ctx_in_gpu * sim_cpu_per_ctx
+    )
     sim_cores = tuple(range(min_sim_core, min_sim_core + sim_cpu_per_ctx))
 
     assert len(sim_cores) % cpw == 0
@@ -466,12 +508,15 @@ def build_affinities_gpu_1cpu_drive(slt, gpu, cpu, cxg=1, gpr=1, cpw=1,
         hto = cpu
     if hto > 0:
         hyperthreads = tuple(c + hto for c in sim_cores)
-        workers_cpus = tuple(sim_cores[i:i + cpw] + hyperthreads[i:i + cpw]
-            for i in range(0, len(sim_cores), cpw))
+        workers_cpus = tuple(
+            sim_cores[i : i + cpw] + hyperthreads[i : i + cpw]
+            for i in range(0, len(sim_cores), cpw)
+        )
         master_cpus = (gpu_core,) + sim_cores + (gpu_core + hto,) + hyperthreads
     else:
-        workers_cpus = tuple(sim_cores[i:i + cpw]
-            for i in range(0, len(sim_cores), cpw))
+        workers_cpus = tuple(
+            sim_cores[i : i + cpw] for i in range(0, len(sim_cores), cpw)
+        )
         master_cpus = (gpu_core,) + sim_cores
 
     affinity = AttrDict(

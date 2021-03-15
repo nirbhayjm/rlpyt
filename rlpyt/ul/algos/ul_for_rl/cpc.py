@@ -1,26 +1,41 @@
-
-import torch
 from collections import namedtuple
 
-from rlpyt.utils.tensor import valid_mean
+import torch
 
+from rlpyt.algos.utils import valid_from_done
 from rlpyt.ul.algos.ul_for_rl.base import BaseUlAlgorithm
-from rlpyt.utils.quick_args import save__init__args
-from rlpyt.utils.logging import logger
+from rlpyt.ul.models.ul.encoders import EncoderModel
 from rlpyt.ul.replays.ul_for_rl_replay import UlForRlReplayBuffer
 from rlpyt.utils.buffer import buffer_to
-from rlpyt.algos.utils import valid_from_done
-from rlpyt.utils.tensor import to_onehot
-from rlpyt.ul.models.ul.encoders import EncoderModel
-
+from rlpyt.utils.logging import logger
+from rlpyt.utils.quick_args import save__init__args
+from rlpyt.utils.tensor import to_onehot, valid_mean
 
 IGNORE_INDEX = -100  # Mask CPC samples across episode boundary.
-OptInfo = namedtuple("OptInfo", ["cpcLoss",
-    "cpcAccuracy1", "cpcAccuracy2", "cpcAccuracyTm1", "cpcAccuracyTm2",
-    "activationLoss", "gradNorm", "convActivation"])
-ValInfo = namedtuple("ValInfo", ["cpcLoss",
-    "cpcAccuracy1", "cpcAccuracy2", "cpcAccuracyTm1", "cpcAccuracyTm2",
-    "convActivation"])
+OptInfo = namedtuple(
+    "OptInfo",
+    [
+        "cpcLoss",
+        "cpcAccuracy1",
+        "cpcAccuracy2",
+        "cpcAccuracyTm1",
+        "cpcAccuracyTm2",
+        "activationLoss",
+        "gradNorm",
+        "convActivation",
+    ],
+)
+ValInfo = namedtuple(
+    "ValInfo",
+    [
+        "cpcLoss",
+        "cpcAccuracy1",
+        "cpcAccuracy2",
+        "cpcAccuracyTm1",
+        "cpcAccuracyTm2",
+        "convActivation",
+    ],
+)
 
 
 class CPC(BaseUlAlgorithm):
@@ -29,28 +44,28 @@ class CPC(BaseUlAlgorithm):
     opt_info_fields = tuple(f for f in OptInfo._fields)  # copy
 
     def __init__(
-            self,
-            batch_B,
-            batch_T,
-            learning_rate,
-            replay_filepath,
-            warmup_T=0,
-            rnn_size=256,
-            latent_size=256,
-            OptimCls=torch.optim.Adam,
-            optim_kwargs=None,
-            initial_state_dict=None,
-            clip_grad_norm=1000.,
-            validation_split=0.0,
-            n_validation_batches=0,
-            EncoderCls=EncoderModel,
-            encoder_kwargs=None,
-            ReplayCls=UlForRlReplayBuffer,
-            onehot_actions=True,
-            activation_loss_coefficient=0.,  # 0 for OFF
-            learning_rate_anneal=None,  # cosine
-            learning_rate_warmup=0,  # number of updates
-            ):
+        self,
+        batch_B,
+        batch_T,
+        learning_rate,
+        replay_filepath,
+        warmup_T=0,
+        rnn_size=256,
+        latent_size=256,
+        OptimCls=torch.optim.Adam,
+        optim_kwargs=None,
+        initial_state_dict=None,
+        clip_grad_norm=1000.0,
+        validation_split=0.0,
+        n_validation_batches=0,
+        EncoderCls=EncoderModel,
+        encoder_kwargs=None,
+        ReplayCls=UlForRlReplayBuffer,
+        onehot_actions=True,
+        activation_loss_coefficient=0.0,  # 0 for OFF
+        learning_rate_anneal=None,  # cosine
+        learning_rate_warmup=0,  # number of updates
+    ):
         optim_kwargs = dict() if optim_kwargs is None else optim_kwargs
         encoder_kwargs = dict() if encoder_kwargs is None else encoder_kwargs
         save__init__args(locals())
@@ -60,8 +75,11 @@ class CPC(BaseUlAlgorithm):
         self._replay_T = batch_T + warmup_T
 
     def initialize(self, n_updates, cuda_idx=None):
-        self.device = torch.device("cpu") if cuda_idx is None else torch.device(
-            "cuda", index=cuda_idx)
+        self.device = (
+            torch.device("cpu")
+            if cuda_idx is None
+            else torch.device("cuda", index=cuda_idx)
+        )
 
         examples = self.load_replay()
         self.encoder = self.EncoderCls(
@@ -85,9 +103,10 @@ class CPC(BaseUlAlgorithm):
         )
         self.prediction_rnn.to(self.device)
 
-        transforms = [None] + [torch.nn.Linear(
-            in_features=self.rnn_size, out_features=self.latent_size)
-            for _ in range(self.batch_T - 1)]  # no W for delta_t=0
+        transforms = [None] + [
+            torch.nn.Linear(in_features=self.rnn_size, out_features=self.latent_size)
+            for _ in range(self.batch_T - 1)
+        ]  # no W for delta_t=0
         self.transforms = torch.nn.ModuleList(transforms)
         self.transforms.to(self.device)
 
@@ -108,10 +127,11 @@ class CPC(BaseUlAlgorithm):
 
         loss.backward()
         if self.clip_grad_norm is None:
-            grad_norm = 0.
+            grad_norm = 0.0
         else:
             grad_norm = torch.nn.utils.clip_grad_norm_(
-                self.parameters(), self.clip_grad_norm)
+                self.parameters(), self.clip_grad_norm
+            )
         self.optimizer.step()
         opt_info.cpcLoss.append(cpc_loss.item())
         opt_info.cpcAccuracy1.append(cpc_accuracies[0].item())
@@ -121,7 +141,8 @@ class CPC(BaseUlAlgorithm):
         opt_info.activationLoss.append(act_loss.item())
         opt_info.gradNorm.append(grad_norm.item())
         opt_info.convActivation.append(
-            conv_output[0, 0].detach().cpu().view(-1).numpy())  # Keep 1 full one.
+            conv_output[0, 0].detach().cpu().view(-1).numpy()
+        )  # Keep 1 full one.
         return opt_info
 
     def cpc_loss(self, samples):
@@ -132,26 +153,25 @@ class CPC(BaseUlAlgorithm):
 
         prev_action = samples.prev_action
         if self.onehot_actions:
-            prev_action = to_onehot(prev_action,
-                self._act_dim, dtype=torch.float)
+            prev_action = to_onehot(prev_action, self._act_dim, dtype=torch.float)
         prev_reward = samples.prev_reward
         observation, prev_action, prev_reward = buffer_to(
-            (observation, prev_action, prev_reward),
-            device=self.device)
+            (observation, prev_action, prev_reward), device=self.device
+        )
 
         z_latent, conv_output = self.encoder(observation)  # [T,B,..]
         rnn_input = torch.cat(
-            [z_latent, prev_action, prev_reward.unsqueeze(-1)],  # [T,B,..]
-            dim=-1)
+            [z_latent, prev_action, prev_reward.unsqueeze(-1)], dim=-1  # [T,B,..]
+        )
         context, _ = self.prediction_rnn(rnn_input)
 
         valid = valid_from_done(samples.done).type(torch.bool)
 
         # Extract only the ones to train (all were needed to compute).
-        z_latent = z_latent[self.warmup_T:]
-        conv_output = conv_output[self.warmup_T:]
-        context = context[self.warmup_T:]
-        valid = valid[self.warmup_T:]
+        z_latent = z_latent[self.warmup_T :]
+        conv_output = conv_output[self.warmup_T :]
+        context = context[self.warmup_T :]
+        valid = valid[self.warmup_T :]
 
         ###############################
         # Contrast the network outputs:
@@ -163,8 +183,9 @@ class CPC(BaseUlAlgorithm):
         # Draw from base_labels according to the location of the corresponding
         # positive latent for contrast, using [T,B]; will give the location
         # within T*B.
-        base_labels = torch.arange(T * B, dtype=torch.long,
-            device=self.device).view(T, B)
+        base_labels = torch.arange(T * B, dtype=torch.long, device=self.device).view(
+            T, B
+        )
         base_labels[~valid] = IGNORE_INDEX  # By location of z_latent.
 
         # All predictions and labels into one tensor for efficient contrasting.
@@ -174,7 +195,9 @@ class CPC(BaseUlAlgorithm):
             # Predictions based on context starting from t=0 up to the point where
             # there isn't a future latent within the timesteps of the minibatch.
             # [T-dt,B,C] -> [T-dt,B,H] -> [(T-dt)*B,H]
-            prediction_list.append(self.transforms[delta_t](context[:-delta_t]).view(-1, Z))
+            prediction_list.append(
+                self.transforms[delta_t](context[:-delta_t]).view(-1, Z)
+            )
             # The correct latent is delta_t time steps ahead:
             # [T-dt,B] -> [(T-dt)*B]
             label_list.append(base_labels[delta_t:].view(-1))
@@ -226,8 +249,9 @@ class CPC(BaseUlAlgorithm):
         val_info = ValInfo(*([] for _ in range(len(ValInfo._fields))))
         self.optimizer.zero_grad()
         for _ in range(self.n_validation_batches):
-            samples = self.replay_buffer.sample_batch(self.validation_batch_B,
-                validation=True)
+            samples = self.replay_buffer.sample_batch(
+                self.validation_batch_B, validation=True
+            )
             with torch.no_grad():
                 cpc_loss, cpc_accuracies, conv_output = self.cpc_loss(samples)
             val_info.cpcLoss.append(cpc_loss.item())
@@ -236,7 +260,8 @@ class CPC(BaseUlAlgorithm):
             val_info.cpcAccuracyTm1.append(cpc_accuracies[2].item())
             val_info.cpcAccuracyTm2.append(cpc_accuracies[3].item())
             val_info.convActivation.append(
-                conv_output[0, 0].detach().cpu().view(-1).numpy())
+                conv_output[0, 0].detach().cpu().view(-1).numpy()
+            )
         self.optimizer.zero_grad()
         logger.log("...validation loss completed.")
         return val_info

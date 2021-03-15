@@ -1,4 +1,3 @@
-
 import copy
 
 configs = dict()
@@ -11,7 +10,7 @@ config = dict(
         batch_size=256,
         learning_rate=1.5e-4,  # Adam Optimizer
         target_update_interval=1000,
-        clip_grad_norm=40.,
+        clip_grad_norm=40.0,
         min_steps_rl=int(5e4),
         double_dqn=True,
         prioritized_replay=False,
@@ -34,7 +33,7 @@ config = dict(
         ul_target_update_tau=0.01,
         ul_latent_size=256,
         ul_anchor_hidden_sizes=512,
-        ul_clip_grad_norm=10.,
+        ul_clip_grad_norm=10.0,
         # ul_pri_alpha=0.,
         # ul_pri_beta=1.,
         # ul_pri_n_step_return=1,
@@ -73,4 +72,3 @@ config = dict(
 )
 
 configs["scaled_ddqn_ul"] = config
-

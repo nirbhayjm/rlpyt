@@ -1,10 +1,9 @@
-
-import sys
 import copy
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2
@@ -13,7 +12,9 @@ num_computers = int(args[1])
 
 print(f"MY_COMPUTER: {my_computer},  NUM_COMPUTERS: {num_computers}")
 
-script = "rlpyt/ul/experiments/rl_from_ul/scripts/dmcontrol/train/dmc_sac_from_ul_serial.py"
+script = (
+    "rlpyt/ul/experiments/rl_from_ul/scripts/dmcontrol/train/dmc_sac_from_ul_serial.py"
+)
 
 affinity_code = quick_affinity_code(contexts_per_gpu=5)
 runs_per_setting = 4
@@ -52,34 +53,36 @@ keys = [("pretrain", "name")]
 variant_levels.append(VariantLevel(keys, values, dir_names))
 
 
-
 ########################################################
 # UL Config which was the same for all in the run.
 
 pretrain_algos = ["ATC"]
 replays = ["20200715/rad_sac_replaysave84"]
 model_dirs = ["/data/adam/ul4rl/models/20200901/dmc_atc_multi4_1/"]
-values = list(zip(
-    pretrain_algos, 
-    replays, 
-    model_dirs,
-))
+values = list(
+    zip(
+        pretrain_algos,
+        replays,
+        model_dirs,
+    )
+)
 dir_names = ["RlFromUl"]  # TRAIN SCRIPT SPLITS OFF THIS
 keys = [
-    ("pretrain", "algo"), 
+    ("pretrain", "algo"),
     ("pretrain", "replay"),
-    ("pretrain", "model_dir"), 
+    ("pretrain", "model_dir"),
 ]
 variant_levels.append(VariantLevel(keys, values, dir_names))
 
 
 ##################################################
-# Some RL CONFIG 
+# Some RL CONFIG
 
 doms = [
     "cheetah",
     "ball_in_cup",
-    "cartpole", "cartpole",
+    "cartpole",
+    "cartpole",
     "walker",
     # "hopper",
     # "finger",
@@ -88,7 +91,8 @@ doms = [
 tasks = [
     "run",
     "catch",
-    "swingup", "swingup_sparse",
+    "swingup",
+    "swingup_sparse",
     "walk",
     # "hop",
     # "spin",
@@ -97,7 +101,8 @@ tasks = [
 fskips = [
     4,
     4,
-    8, 8,
+    8,
+    8,
     2,
     # 4,
     # 2,
@@ -106,13 +111,16 @@ fskips = [
 n_after_cheetah = len(doms) - 1
 qlrs = [2e-4] + [1e-3] * n_after_cheetah
 pilrs = [2e-4] + [1e-3] * n_after_cheetah
-bss = [512] + [256] * n_after_cheetah  # (n_after_cheetah - 1) + [512]  # pendulum try 512
+bss = [512] + [
+    256
+] * n_after_cheetah  # (n_after_cheetah - 1) + [512]  # pendulum try 512
 # rprs = [512] * 4  # [512]
 # steps = [150e3, 150e3, 75e3, 3e5]
 steps = [
     150e3,
     75e3,
-    375e2, 200e3,
+    375e2,
+    200e3,
     200e3,
     # 400e3,
     # 200e3,

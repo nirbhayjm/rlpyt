@@ -1,4 +1,3 @@
-
 """
 Runs one instance of the environment and optimizes using the Soft Actor
 Critic algorithm. Can use a GPU for the agent (applies to both sample and
@@ -10,11 +9,11 @@ example.
 
 """
 
-from rlpyt.samplers.serial.sampler import SerialSampler
-from rlpyt.envs.gym import make as gym_make
-from rlpyt.algos.qpg.sac import SAC
 from rlpyt.agents.qpg.sac_agent import SacAgent
+from rlpyt.algos.qpg.sac import SAC
+from rlpyt.envs.gym import make as gym_make
 from rlpyt.runners.minibatch_rl import MinibatchRlEval
+from rlpyt.samplers.serial.sampler import SerialSampler
 from rlpyt.utils.logging.context import logger_context
 
 
@@ -49,10 +48,15 @@ def build_and_train(env_id="Hopper-v3", run_ID=0, cuda_idx=None):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--env_id', help='environment ID', default='Hopper-v3')
-    parser.add_argument('--run_ID', help='run identifier (logging)', type=int, default=0)
-    parser.add_argument('--cuda_idx', help='gpu to use ', type=int, default=None)
+
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument("--env_id", help="environment ID", default="Hopper-v3")
+    parser.add_argument(
+        "--run_ID", help="run identifier (logging)", type=int, default=0
+    )
+    parser.add_argument("--cuda_idx", help="gpu to use ", type=int, default=None)
     args = parser.parse_args()
     build_and_train(
         env_id=args.env_id,

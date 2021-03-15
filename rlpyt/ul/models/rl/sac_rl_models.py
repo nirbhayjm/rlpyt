@@ -1,5 +1,3 @@
-
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -20,7 +18,7 @@ def weight_init(m):
         m.weight.data.fill_(0.0)
         m.bias.data.fill_(0.0)
         mid = m.weight.size(2) // 2
-        gain = nn.init.calculate_gain('relu')
+        gain = nn.init.calculate_gain("relu")
         nn.init.orthogonal_(m.weight.data[:, :, mid, mid], gain)
 
 
@@ -42,16 +40,15 @@ class SacModel(nn.Module):
 
 
 class SacConvModel(nn.Module):
-
     def __init__(
-            self,
-            image_shape,
-            channels=None,
-            kernel_sizes=None,
-            strides=None,
-            paddings=None,
-            final_nonlinearity=True,
-            ):
+        self,
+        image_shape,
+        channels=None,
+        kernel_sizes=None,
+        strides=None,
+        paddings=None,
+        final_nonlinearity=True,
+    ):
         super().__init__()
         c, h, w = image_shape
         self.conv = Conv2dModel(
@@ -68,7 +65,7 @@ class SacConvModel(nn.Module):
     def forward(self, observation):
         if observation.dtype == torch.uint8:
             img = observation.type(torch.float)
-            img = img.mul_(1. / 255)
+            img = img.mul_(1.0 / 255)
         else:
             img = observation
 
@@ -87,13 +84,12 @@ class SacConvModel(nn.Module):
 
 
 class SacFc1Model(nn.Module):
-
     def __init__(
-            self,
-            input_size,
-            latent_size,
-            layer_norm=True,
-            ):
+        self,
+        input_size,
+        latent_size,
+        layer_norm=True,
+    ):
         super().__init__()
         self.linear = nn.Linear(input_size, latent_size)
         self.layer_norm = nn.LayerNorm(latent_size) if layer_norm else None
@@ -102,9 +98,11 @@ class SacFc1Model(nn.Module):
     def forward(self, conv_out):
         if conv_out.dtype == torch.uint8:  # Testing NoConv model
             conv_out = conv_out.type(torch.float)
-            conv_out = conv_out.mul_(1. / 255)
+            conv_out = conv_out.mul_(1.0 / 255)
         lead_dim, T, B, _ = infer_leading_dims(conv_out, 3)
-        conv_out = F.relu(conv_out.view(T * B, -1))  # bc conv_out might be pre-activation
+        conv_out = F.relu(
+            conv_out.view(T * B, -1)
+        )  # bc conv_out might be pre-activation
         latent = self.linear(conv_out)
         if self.layer_norm is not None:
             latent = self.layer_norm(latent)
@@ -117,15 +115,14 @@ class SacFc1Model(nn.Module):
 
 
 class SacActorModel(nn.Module):
-
     def __init__(
-            self,
-            input_size,
-            action_size,
-            hidden_sizes,
-            min_log_std=-10.,
-            max_log_std=2.,
-            ):
+        self,
+        input_size,
+        action_size,
+        hidden_sizes,
+        min_log_std=-10.0,
+        max_log_std=2.0,
+    ):
         super().__init__()
         self.mlp = MlpModel(
             input_size=input_size,
@@ -143,20 +140,20 @@ class SacActorModel(nn.Module):
         mu, log_std = out.chunk(chunks=2, dim=-1)
         # Squash log_std into range.
         log_std = torch.tanh(log_std)
-        log_std = self.min_log_std + 0.5 * (
-            self.max_log_std - self.min_log_std) * (1 + log_std)
+        log_std = self.min_log_std + 0.5 * (self.max_log_std - self.min_log_std) * (
+            1 + log_std
+        )
         mu, log_std = restore_leading_dims((mu, log_std), lead_dim, T, B)
         return mu, log_std
 
 
 class SacCriticModel(nn.Module):
-
     def __init__(
-            self,
-            input_size,
-            action_size,
-            hidden_sizes,
-            ):
+        self,
+        input_size,
+        action_size,
+        hidden_sizes,
+    ):
         super().__init__()
         self.mlp1 = MlpModel(
             input_size=input_size + action_size,
@@ -173,10 +170,13 @@ class SacCriticModel(nn.Module):
     def forward(self, latent, action, prev_action=None, prev_reward=None):
         lead_dim, T, B, _ = infer_leading_dims(latent, 1)  # latent is vector
 
-        q_input = torch.cat([
-            latent.view(T * B, -1),
-            action.view(T * B, -1),
-            ], dim=1)
+        q_input = torch.cat(
+            [
+                latent.view(T * B, -1),
+                action.view(T * B, -1),
+            ],
+            dim=1,
+        )
         q1 = self.mlp1(q_input).squeeze(-1)
         q2 = self.mlp2(q_input).squeeze(-1)
         q1, q2 = restore_leading_dims((q1, q2), lead_dim, T, B)

@@ -1,10 +1,9 @@
-
-import sys
 import copy
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2
@@ -13,7 +12,9 @@ num_computers = int(args[1])
 
 print(f"MY_COMPUTER: {my_computer},  NUM_COMPUTERS: {num_computers}")
 
-script = "rlpyt/ul/experiments/rl_from_ul/scripts/dmcontrol/train/dmc_sac_from_ul_serial.py"
+script = (
+    "rlpyt/ul/experiments/rl_from_ul/scripts/dmcontrol/train/dmc_sac_from_ul_serial.py"
+)
 
 affinity_code = quick_affinity_code(contexts_per_gpu=3)
 runs_per_setting = 4
@@ -25,7 +26,6 @@ experiment_title = "dmc_sac_from_vaae_1"
 
 variant_levels = list()
 # variant_levels_2 = list()
-
 
 
 n_updates = [1e4, 5e4]
@@ -41,13 +41,11 @@ dir_names = ["{}deltaT_{}hdsz".format(*v) for v in values]
 keys = [("pretrain", "delta_T"), ("pretrain", "hidden_sizes")]
 variant_levels.append(VariantLevel(keys, values, dir_names))
 
-kl_losses = [1., 0.1]
+kl_losses = [1.0, 0.1]
 values = list(zip(kl_losses))
 dir_names = ["{}klcoef".format(*v) for v in values]
 keys = [("pretrain", "kl_coeff")]
 variant_levels.append(VariantLevel(keys, values, dir_names))
-
-
 
 
 ##################################################
@@ -85,16 +83,18 @@ variant_levels.append(VariantLevel(keys, values, dir_names))
 pretrain_algos = ["VAE"]
 replays = ["20200715/rad_sac_replaysave84"]
 model_dirs = ["/data/adam/ul4rl/models/20200826/dmc_vae_pretrain_1/"]
-values = list(zip(
-    pretrain_algos, 
-    replays, 
-    model_dirs,
-))
+values = list(
+    zip(
+        pretrain_algos,
+        replays,
+        model_dirs,
+    )
+)
 dir_names = ["RlFromUl"]  # TRAIN SCRIPT SPLITS OFF THIS
 keys = [
-    ("pretrain", "algo"), 
+    ("pretrain", "algo"),
     ("pretrain", "replay"),
-    ("pretrain", "model_dir"), 
+    ("pretrain", "model_dir"),
 ]
 variant_levels.append(VariantLevel(keys, values, dir_names))
 

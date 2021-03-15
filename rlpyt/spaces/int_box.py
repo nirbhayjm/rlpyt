@@ -1,4 +1,3 @@
-
 import numpy as np
 
 from rlpyt.spaces.base import Space
@@ -24,8 +23,9 @@ class IntBox(Space):
 
     def sample(self):
         """Return a single sample from ``np.random.randint``."""
-        return np.random.randint(low=self.low, high=self.high,
-            size=self.shape, dtype=self.dtype)
+        return np.random.randint(
+            low=self.low, high=self.high, size=self.shape, dtype=self.dtype
+        )
 
     def null_value(self):
         null = np.zeros(self.shape, dtype=self.dtype)

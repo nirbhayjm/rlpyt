@@ -1,10 +1,9 @@
-
 import torch
 
-from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.models.conv2d import Conv2dModel
-from rlpyt.models.mlp import MlpModel
 from rlpyt.models.dqn.dueling import DuelingHeadModel
+from rlpyt.models.mlp import MlpModel
+from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
 
 class AtariDqnModel(torch.nn.Module):
@@ -14,17 +13,17 @@ class AtariDqnModel(torch.nn.Module):
     """
 
     def __init__(
-            self,
-            image_shape,
-            output_size,
-            fc_sizes=512,
-            dueling=False,
-            use_maxpool=False,
-            channels=None,  # None uses default.
-            kernel_sizes=None,
-            strides=None,
-            paddings=None,
-            ):
+        self,
+        image_shape,
+        output_size,
+        fc_sizes=512,
+        dueling=False,
+        use_maxpool=False,
+        channels=None,  # None uses default.
+        kernel_sizes=None,
+        strides=None,
+        paddings=None,
+    ):
         """Instantiates the neural network according to arguments; network defaults
         stored within this method."""
         super().__init__()
@@ -55,7 +54,7 @@ class AtariDqnModel(torch.nn.Module):
         via the agent).
         """
         img = observation.type(torch.float)  # Expect torch.uint8 inputs
-        img = img.mul_(1. / 255)  # From [0-255] to [0-1], in place.
+        img = img.mul_(1.0 / 255)  # From [0-255] to [0-1], in place.
 
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
         lead_dim, T, B, img_shape = infer_leading_dims(img, 3)

@@ -1,11 +1,10 @@
-
-import sys
 import copy
 import os.path as osp
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2 or len(args) == 0
@@ -30,8 +29,11 @@ lr_schedules = ["cosine"]
 lr_warmups = [1e3]
 values = list(zip(learning_rates, lr_schedules, lr_warmups))
 dir_names = ["{}lr_{}sched_{}wrmp".format(*v) for v in values]
-keys = [("algo", "learning_rate"), ("algo", "learning_rate_anneal"),
-    ("algo", "learning_rate_warmup")]
+keys = [
+    ("algo", "learning_rate"),
+    ("algo", "learning_rate_anneal"),
+    ("algo", "learning_rate_warmup"),
+]
 variant_levels.append(VariantLevel(keys, values, dir_names))
 
 n_updates = [20e3, 100e3]
@@ -49,12 +51,11 @@ dir_names = ["{}nstepspredict_{}hdsz".format(*v) for v in values]
 keys = [("algo", "n_steps_predict"), ("algo", "hidden_sizes")]
 variant_levels.append(VariantLevel(keys, values, dir_names))
 
-kl_losses = [1., 0.1]
+kl_losses = [1.0, 0.1]
 values = list(zip(kl_losses))
 dir_names = ["{}klcoef".format(*v) for v in values]
 keys = [("algo", "kl_coeff")]
 variant_levels.append(VariantLevel(keys, values, dir_names))
-
 
 
 replay_base_dir = "/data/adam/ul4rl/replays/20200608/15M_VecEps_B78"
@@ -63,8 +64,9 @@ replay_base_dir = "/data/adam/ul4rl/replays/20200608/15M_VecEps_B78"
 #     "alien", "breakout", "frostbite", "gravitar",
 # ]
 games = ["breakout", "gravitar", "qbert", "space_invaders"]
-replay_filenames = [osp.join(replay_base_dir, game, "run_0/replaybuffer.pkl")
-    for game in games]
+replay_filenames = [
+    osp.join(replay_base_dir, game, "run_0/replaybuffer.pkl") for game in games
+]
 values = list(zip(replay_filenames, games))
 dir_names = games
 keys = [("algo", "replay_filepath"), ("name",)]

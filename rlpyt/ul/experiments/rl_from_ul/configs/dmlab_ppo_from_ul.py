@@ -1,4 +1,3 @@
-
 import copy
 
 configs = dict()
@@ -15,7 +14,7 @@ config = dict(
         learning_rate=2.5e-4,
         value_loss_coeff=0.5,
         entropy_loss_coeff=0.01,  # LEVEL-SPECIFIC
-        clip_grad_norm=100.,
+        clip_grad_norm=100.0,
         initial_optim_state_dict=None,
         gae_lambda=0.97,
         minibatches=2,

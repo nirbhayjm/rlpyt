@@ -1,16 +1,16 @@
-
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
-# from torch.nn.parallel import DistributedDataParallelCPU as DDPC  # Deprecated
 
-from rlpyt.agents.base import BaseAgent, AgentStep
-from rlpyt.utils.quick_args import save__init__args
-from rlpyt.distributions.gaussian import Gaussian, DistInfo
-from rlpyt.utils.buffer import buffer_to
-from rlpyt.utils.logging import logger
+from rlpyt.agents.base import AgentStep, BaseAgent
+from rlpyt.distributions.gaussian import DistInfo, Gaussian
 from rlpyt.models.qpg.mlp import MuMlpModel, QofMuMlpModel
 from rlpyt.models.utils import update_state_dict
+from rlpyt.utils.buffer import buffer_to
 from rlpyt.utils.collections import namedarraytuple
+from rlpyt.utils.logging import logger
+from rlpyt.utils.quick_args import save__init__args
+
+# from torch.nn.parallel import DistributedDataParallelCPU as DDPC  # Deprecated
 
 
 AgentInfo = namedarraytuple("AgentInfo", ["mu"])
@@ -22,16 +22,16 @@ class DdpgAgent(BaseAgent):
     shared_mu_model = None
 
     def __init__(
-            self,
-            ModelCls=MuMlpModel,  # Mu model.
-            QModelCls=QofMuMlpModel,
-            model_kwargs=None,  # Mu model.
-            q_model_kwargs=None,
-            initial_model_state_dict=None,  # Mu model.
-            initial_q_model_state_dict=None,
-            action_std=0.1,
-            action_noise_clip=None,
-            ):
+        self,
+        ModelCls=MuMlpModel,  # Mu model.
+        QModelCls=QofMuMlpModel,
+        model_kwargs=None,  # Mu model.
+        q_model_kwargs=None,
+        initial_model_state_dict=None,  # Mu model.
+        initial_q_model_state_dict=None,
+        action_std=0.1,
+        action_noise_clip=None,
+    ):
         """Saves input arguments; default network sizes saved here."""
         if model_kwargs is None:
             model_kwargs = dict(hidden_sizes=[400, 300])
@@ -40,19 +40,18 @@ class DdpgAgent(BaseAgent):
         save__init__args(locals())
         super().__init__()  # For async setup.
 
-    def initialize(self, env_spaces, share_memory=False,
-            global_B=1, env_ranks=None):
+    def initialize(self, env_spaces, share_memory=False, global_B=1, env_ranks=None):
         """Instantiates mu and q, and target_mu and target_q models."""
-        super().initialize(env_spaces, share_memory,
-            global_B=global_B, env_ranks=env_ranks)
-        self.q_model = self.QModelCls(**self.env_model_kwargs,
-            **self.q_model_kwargs)
+        super().initialize(
+            env_spaces, share_memory, global_B=global_B, env_ranks=env_ranks
+        )
+        self.q_model = self.QModelCls(**self.env_model_kwargs, **self.q_model_kwargs)
         if self.initial_q_model_state_dict is not None:
             self.q_model.load_state_dict(self.initial_q_model_state_dict)
-        self.target_model = self.ModelCls(**self.env_model_kwargs,
-            **self.model_kwargs)
-        self.target_q_model = self.QModelCls(**self.env_model_kwargs,
-            **self.q_model_kwargs)
+        self.target_model = self.ModelCls(**self.env_model_kwargs, **self.model_kwargs)
+        self.target_q_model = self.QModelCls(
+            **self.env_model_kwargs, **self.q_model_kwargs
+        )
         self.target_q_model.load_state_dict(self.q_model.state_dict())
         assert len(env_spaces.action.shape) == 1
         self.distribution = Gaussian(
@@ -86,16 +85,18 @@ class DdpgAgent(BaseAgent):
 
     def q(self, observation, prev_action, prev_reward, action):
         """Compute Q-value for input state/observation and action (with grad)."""
-        model_inputs = buffer_to((observation, prev_action, prev_reward,
-            action), device=self.device)
+        model_inputs = buffer_to(
+            (observation, prev_action, prev_reward, action), device=self.device
+        )
         q = self.q_model(*model_inputs)
         return q.cpu()
 
     def q_at_mu(self, observation, prev_action, prev_reward):
         """Compute Q-value for input state/observation, through the mu_model
         (with grad)."""
-        model_inputs = buffer_to((observation, prev_action, prev_reward),
-            device=self.device)
+        model_inputs = buffer_to(
+            (observation, prev_action, prev_reward), device=self.device
+        )
         mu = self.model(*model_inputs)
         q = self.q_model(*model_inputs, mu)
         return q.cpu()
@@ -103,8 +104,9 @@ class DdpgAgent(BaseAgent):
     def target_q_at_mu(self, observation, prev_action, prev_reward):
         """Compute target Q-value for input state/observation, through the
         target mu_model."""
-        model_inputs = buffer_to((observation, prev_action, prev_reward),
-            device=self.device)
+        model_inputs = buffer_to(
+            (observation, prev_action, prev_reward), device=self.device
+        )
         target_mu = self.target_model(*model_inputs)
         target_q_at_mu = self.target_q_model(*model_inputs, target_mu)
         return target_q_at_mu.cpu()
@@ -113,8 +115,9 @@ class DdpgAgent(BaseAgent):
     def step(self, observation, prev_action, prev_reward):
         """Computes distribution parameters (mu) for state/observation,
         returns (gaussian) sampled action."""
-        model_inputs = buffer_to((observation, prev_action, prev_reward),
-            device=self.device)
+        model_inputs = buffer_to(
+            (observation, prev_action, prev_reward), device=self.device
+        )
         mu = self.model(*model_inputs)
         action = self.distribution.sample(DistInfo(mean=mu))
         agent_info = AgentInfo(mu=mu)
@@ -143,7 +146,7 @@ class DdpgAgent(BaseAgent):
     def eval_mode(self, itr):
         super().eval_mode(itr)
         self.q_model.eval()
-        self.distribution.set_std(0.)  # Deterministic.
+        self.distribution.set_std(0.0)  # Deterministic.
 
     def state_dict(self):
         return dict(

@@ -1,10 +1,9 @@
-
-import sys
 import copy
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2
@@ -13,7 +12,9 @@ num_computers = int(args[1])
 
 print(f"MY_COMPUTER: {my_computer},  NUM_COMPUTERS: {num_computers}")
 
-script = "rlpyt/ul/experiments/scripts/rl_with_ul/dmlab/train/dmlab_ppo_rl_with_ul_alt.py"
+script = (
+    "rlpyt/ul/experiments/scripts/rl_with_ul/dmlab/train/dmlab_ppo_rl_with_ul_alt.py"
+)
 
 affinity_code = quick_affinity_code(contexts_per_gpu=2, alternating=True)
 runs_per_setting = 2
@@ -55,8 +56,11 @@ max_steps_ul = [
 ]
 values = list(zip(ul_update_schedules, min_steps_ul, max_steps_ul))
 dir_names = ["{}_{}minstepulmax{}".format(*v) for v in values]
-keys = [("algo", "ul_update_schedule"), ("algo", "min_steps_ul"),
-    ("algo", "max_steps_ul")]
+keys = [
+    ("algo", "ul_update_schedule"),
+    ("algo", "min_steps_ul"),
+    ("algo", "max_steps_ul"),
+]
 variant_levels_1.append(VariantLevel(keys, values, dir_names))
 
 levels = [
@@ -103,4 +107,3 @@ run_experiments(
     log_dirs=my_log_dirs,
     common_args=(default_config_key,),
 )
-

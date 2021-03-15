@@ -1,13 +1,14 @@
-
 import numpy as np
 
-from rlpyt.replays.n_step import BaseNStepReturnBuffer
 from rlpyt.agents.base import AgentInputs
-from rlpyt.utils.collections import namedarraytuple
+from rlpyt.replays.n_step import BaseNStepReturnBuffer
 from rlpyt.utils.buffer import torchify_buffer
+from rlpyt.utils.collections import namedarraytuple
 
-SamplesFromReplay = namedarraytuple("SamplesFromReplay",
-    ["agent_inputs", "action", "return_", "done", "done_n", "target_inputs"])
+SamplesFromReplay = namedarraytuple(
+    "SamplesFromReplay",
+    ["agent_inputs", "action", "return_", "done", "done_n", "target_inputs"],
+)
 
 
 class NStepReturnBuffer(BaseNStepReturnBuffer):

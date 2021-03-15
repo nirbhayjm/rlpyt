@@ -1,15 +1,13 @@
-
-import multiprocessing as mp
 import ctypes
+import multiprocessing as mp
 import time
 
 from rlpyt.samplers.base import BaseSampler
 from rlpyt.samplers.buffer import build_samples_buffer
 from rlpyt.samplers.parallel.worker import sampling_process
-from rlpyt.utils.logging import logger
 from rlpyt.utils.collections import AttrDict
+from rlpyt.utils.logging import logger
 from rlpyt.utils.synchronize import drain_queue
-
 
 EVAL_TRAJ_CHECK = 0.1  # seconds.
 
@@ -26,16 +24,16 @@ class ParallelSamplerBase(BaseSampler):
     ######################################
 
     def initialize(
-            self,
-            agent,
-            affinity,
-            seed,
-            bootstrap_value=False,
-            traj_info_kwargs=None,
-            world_size=1,
-            rank=0,
-            worker_process=None,
-            ):
+        self,
+        agent,
+        affinity,
+        seed,
+        bootstrap_value=False,
+        traj_info_kwargs=None,
+        world_size=1,
+        rank=0,
+        worker_process=None,
+    ):
         """
         Creates an example instance of the environment for agent initialization
         (which may differ by sub-class) and to pre-allocate batch buffers, then deletes
@@ -47,7 +45,7 @@ class ParallelSamplerBase(BaseSampler):
         and collector objects.  Waits for the worker process to complete all initialization
         (such as decorrelating environment states) before returning.  Barriers and other
         parallel indicators are constructed to manage worker processes.
-        
+
         .. warning::
             If doing offline agent evaluation, will use at least one evaluation environment
             instance per parallel worker, which might increase the total
@@ -73,8 +71,7 @@ class ParallelSamplerBase(BaseSampler):
             self.eval_max_T = eval_max_T = int(self.eval_max_steps // eval_n_envs)
 
         env = self.EnvCls(**self.env_kwargs)
-        self._agent_init(agent, env, global_B=global_B,
-            env_ranks=env_ranks)
+        self._agent_init(agent, env, global_B=global_B, env_ranks=env_ranks)
         examples = self._build_buffers(env, bootstrap_value)
         env.close()
         del env
@@ -89,9 +86,13 @@ class ParallelSamplerBase(BaseSampler):
         workers_kwargs = self._assemble_workers_kwargs(affinity, seed, n_envs_list)
 
         target = sampling_process if worker_process is None else worker_process
-        self.workers = [mp.Process(target=target,
-            kwargs=dict(common_kwargs=common_kwargs, worker_kwargs=w_kwargs))
-            for w_kwargs in workers_kwargs]
+        self.workers = [
+            mp.Process(
+                target=target,
+                kwargs=dict(common_kwargs=common_kwargs, worker_kwargs=w_kwargs),
+            )
+            for w_kwargs in workers_kwargs
+        ]
         for w in self.workers:
             w.start()
 
@@ -127,20 +128,25 @@ class ParallelSamplerBase(BaseSampler):
         if self.eval_max_trajectories is not None:
             while True:
                 time.sleep(EVAL_TRAJ_CHECK)
-                traj_infos.extend(drain_queue(self.eval_traj_infos_queue,
-                    guard_sentinel=True))
+                traj_infos.extend(
+                    drain_queue(self.eval_traj_infos_queue, guard_sentinel=True)
+                )
                 if len(traj_infos) >= self.eval_max_trajectories:
                     self.sync.stop_eval.value = True
-                    logger.log("Evaluation reached max num trajectories "
-                        f"({self.eval_max_trajectories}).")
+                    logger.log(
+                        "Evaluation reached max num trajectories "
+                        f"({self.eval_max_trajectories})."
+                    )
                     break  # Stop possibly before workers reach max_T.
                 if self.ctrl.barrier_out.parties - self.ctrl.barrier_out.n_waiting == 1:
-                    logger.log("Evaluation reached max num time steps "
-                        f"({self.eval_max_T}).")
+                    logger.log(
+                        "Evaluation reached max num time steps " f"({self.eval_max_T})."
+                    )
                     break  # Workers reached max_T.
         self.ctrl.barrier_out.wait()
-        traj_infos.extend(drain_queue(self.eval_traj_infos_queue,
-            n_sentinel=self.n_worker))
+        traj_infos.extend(
+            drain_queue(self.eval_traj_infos_queue, n_sentinel=self.n_worker)
+        )
         self.ctrl.do_eval.value = False
         return traj_infos
 
@@ -158,28 +164,39 @@ class ParallelSamplerBase(BaseSampler):
         B = self.batch_spec.B if B is None else B
         n_worker = len(affinity["workers_cpus"]) if n_worker is None else n_worker
         if B < n_worker:
-            logger.log(f"WARNING: requested fewer envs ({B}) than available worker "
+            logger.log(
+                f"WARNING: requested fewer envs ({B}) than available worker "
                 f"processes ({n_worker}). Using fewer workers (but maybe better to "
-                "increase sampler's `batch_B`.")
+                "increase sampler's `batch_B`."
+            )
             n_worker = B
         n_envs_list = [B // n_worker] * n_worker
         if not B % n_worker == 0:
-            logger.log("WARNING: unequal number of envs per process, from "
+            logger.log(
+                "WARNING: unequal number of envs per process, from "
                 f"batch_B {self.batch_spec.B} and n_worker {n_worker} "
-                "(possible suboptimal speed).")
+                "(possible suboptimal speed)."
+            )
             for b in range(B % n_worker):
                 n_envs_list[b] += 1
         return n_envs_list
 
     def _agent_init(self, agent, env, global_B=1, env_ranks=None):
-        agent.initialize(env.spaces, share_memory=True,
-            global_B=global_B, env_ranks=env_ranks)
+        agent.initialize(
+            env.spaces, share_memory=True, global_B=global_B, env_ranks=env_ranks
+        )
         self.agent = agent
 
     def _build_buffers(self, env, bootstrap_value):
         self.samples_pyt, self.samples_np, examples = build_samples_buffer(
-            self.agent, env, self.batch_spec, bootstrap_value,
-            agent_shared=True, env_shared=True, subprocess=True)
+            self.agent,
+            env,
+            self.batch_spec,
+            bootstrap_value,
+            agent_shared=True,
+            env_shared=True,
+            subprocess=True,
+        )
         return examples
 
     def _build_parallel_ctrl(self, n_worker):
@@ -209,12 +226,13 @@ class ParallelSamplerBase(BaseSampler):
             global_B=global_B,
         )
         if self.eval_n_envs > 0:
-            common_kwargs.update(dict(
-                eval_n_envs=self.eval_n_envs_per,
-                eval_CollectorCls=self.eval_CollectorCls,
-                eval_env_kwargs=self.eval_env_kwargs,
-                eval_max_T=self.eval_max_T,
-                eval_traj_infos_queue=self.eval_traj_infos_queue,
+            common_kwargs.update(
+                dict(
+                    eval_n_envs=self.eval_n_envs_per,
+                    eval_CollectorCls=self.eval_CollectorCls,
+                    eval_env_kwargs=self.eval_env_kwargs,
+                    eval_max_T=self.eval_max_T,
+                    eval_traj_infos_queue=self.eval_traj_infos_queue,
                 )
             )
         return common_kwargs
@@ -231,8 +249,11 @@ class ParallelSamplerBase(BaseSampler):
                 rank=rank,
                 env_ranks=env_ranks,
                 seed=seed + rank,
-                cpus=(affinity["workers_cpus"][rank]
-                    if affinity.get("set_affinity", True) else None),
+                cpus=(
+                    affinity["workers_cpus"][rank]
+                    if affinity.get("set_affinity", True)
+                    else None
+                ),
                 n_envs=n_envs,
                 samples_np=self.samples_np[:, slice_B],
                 sync=self.sync,  # Only for eval, on CPU.

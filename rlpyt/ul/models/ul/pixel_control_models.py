@@ -1,26 +1,23 @@
-
-
-import torch
 import numpy as np
+import torch
 
 from rlpyt.models.mlp import MlpModel
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
 
 class PixelControlModel(torch.nn.Module):
-
     def __init__(
-            self,
-            input_shape,
-            fc_sizes,
-            reshape,
-            channels,
-            kernel_sizes,
-            strides,
-            paddings=None,
-            output_paddings=None,
-            dueling=True,
-            ):
+        self,
+        input_shape,
+        fc_sizes,
+        reshape,
+        channels,
+        kernel_sizes,
+        strides,
+        paddings=None,
+        output_paddings=None,
+        dueling=True,
+    ):
         super().__init__()
         if isinstance(input_shape, int):
             input_shape = (input_shape,)
@@ -71,34 +68,43 @@ class PixelControlModel(torch.nn.Module):
 
 
 class ConvTranspose2dModel(torch.nn.Module):
-
     def __init__(
-            self,
-            in_channels,
-            channels,
-            kernel_sizes,
-            strides,
-            paddings=None,
-            output_paddings=None,
-            nonlinearity=torch.nn.ReLU,
-            sigmoid_output=False,
-            ):
+        self,
+        in_channels,
+        channels,
+        kernel_sizes,
+        strides,
+        paddings=None,
+        output_paddings=None,
+        nonlinearity=torch.nn.ReLU,
+        sigmoid_output=False,
+    ):
         super().__init__()
         if paddings is None:
             paddings = [0 for _ in range(len(channels))]
         if output_paddings is None:
             output_paddings = [0 for _ in range(len(channels))]
-        assert len(channels) == len(kernel_sizes) == len(strides) == len(paddings) == len(output_paddings)
+        assert (
+            len(channels)
+            == len(kernel_sizes)
+            == len(strides)
+            == len(paddings)
+            == len(output_paddings)
+        )
         in_channels = [in_channels] + channels[:-1]
-        convt_layers = [torch.nn.ConvTranspose2d(
-            in_channels=ic,
-            out_channels=oc,
-            kernel_size=k,
-            stride=s,
-            padding=p,
-            output_padding=op,)
+        convt_layers = [
+            torch.nn.ConvTranspose2d(
+                in_channels=ic,
+                out_channels=oc,
+                kernel_size=k,
+                stride=s,
+                padding=p,
+                output_padding=op,
+            )
             for (ic, oc, k, s, p, op) in zip(
-                in_channels, channels, kernel_sizes, strides, paddings, output_paddings)]
+                in_channels, channels, kernel_sizes, strides, paddings, output_paddings
+            )
+        ]
         sequence = list()
         for convt_layer in convt_layers:
             sequence.append(convt_layer)

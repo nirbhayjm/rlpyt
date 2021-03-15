@@ -1,6 +1,6 @@
+import time
 
 import numpy as np
-import time
 
 from rlpyt.utils.logging.console import colorize
 
@@ -14,9 +14,11 @@ def set_seed(seed):
     global seed_
     seed_ = seed
     import random
+
     random.seed(seed)
     np.random.seed(seed)
     import torch
+
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     print(colorize(f"using seed {seed}", "green"))
@@ -39,7 +41,7 @@ def make_seed():
     sub1 = int(t * d) % d
     sub2 = int(t * d ** 2) % d
     s = 1e-3
-    s_inv = 1. / s
+    s_inv = 1.0 / s
     time.sleep(s * sub2 / d)
     t2 = time.time()
     t2 = t2 - int(t2)

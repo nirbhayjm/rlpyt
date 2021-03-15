@@ -1,11 +1,10 @@
-
-import sys
 import copy
 import os.path as osp
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2 or len(args) == 0
@@ -35,8 +34,9 @@ levels = [
     "explore_goal_locations_small",
     # "rooms_watermaze",
 ]
-replay_filenames = [osp.join(replay_base_dir, level, "run_0/replaybuffer.pkl")
-    for level in levels]
+replay_filenames = [
+    osp.join(replay_base_dir, level, "run_0/replaybuffer.pkl") for level in levels
+]
 values = list(zip(replay_filenames, levels))
 dir_names = levels
 keys = [("algo", "replay_filepath"), ("name",)]

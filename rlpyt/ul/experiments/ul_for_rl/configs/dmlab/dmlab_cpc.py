@@ -1,4 +1,3 @@
-
 import copy
 
 configs = dict()
@@ -12,9 +11,9 @@ config = dict(
         learning_rate=1e-3,
         rnn_size=256,
         latent_size=256,
-        clip_grad_norm=1000.,
+        clip_grad_norm=1000.0,
         onehot_actions=True,
-        activation_loss_coefficient=0.,  # 0 for OFF
+        activation_loss_coefficient=0.0,  # 0 for OFF
         learning_rate_anneal="cosine",  # cosine
         learning_rate_warmup=1000,  # number of updates
         validation_split=0.0,

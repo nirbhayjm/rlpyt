@@ -1,10 +1,9 @@
-
-import sys
 import copy
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2
@@ -13,7 +12,9 @@ num_computers = int(args[1])
 
 print(f"MY_COMPUTER: {my_computer},  NUM_COMPUTERS: {num_computers}")
 
-script = "rlpyt/ul/experiments/rl_with_ul/scripts/atari/train/atari_dqn_with_ul_serial.py"
+script = (
+    "rlpyt/ul/experiments/rl_with_ul/scripts/atari/train/atari_dqn_with_ul_serial.py"
+)
 
 affinity_code = quick_affinity_code(contexts_per_gpu=2)
 runs_per_setting = 2
@@ -34,8 +35,7 @@ min_steps_ul = [5e4]
 ul_lr_schedule = ["cosine"]
 values = list(zip(min_steps_rl, min_steps_ul, ul_lr_schedule))
 dir_names = ["{}rlminstepsul{}_{}anneal".format(*v) for v in values]
-keys = [("algo", "min_steps_rl"), ("algo", "min_steps_ul"),
-    ("algo", "ul_lr_schedule")]
+keys = [("algo", "min_steps_rl"), ("algo", "min_steps_ul"), ("algo", "ul_lr_schedule")]
 variant_levels_1.append(VariantLevel(keys, values, dir_names))
 
 ul_update_schedules = [
@@ -91,4 +91,3 @@ run_experiments(
     log_dirs=my_log_dirs,
     common_args=(default_config_key,),
 )
-

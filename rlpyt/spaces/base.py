@@ -1,6 +1,4 @@
-
-
-class Space():
+class Space:
     """
     Common definitions for observations and actions.
     """

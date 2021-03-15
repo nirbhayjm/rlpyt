@@ -1,13 +1,13 @@
-
 import torch
 import torch.nn.functional as F
 
+from rlpyt.models.conv2d import Conv2dHeadModel
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
-from rlpyt.models.conv2d import Conv2dHeadModel
 
-
-RnnState = namedarraytuple("RnnState", ["h", "c"])  # For downstream namedarraytuples to work
+RnnState = namedarraytuple(
+    "RnnState", ["h", "c"]
+)  # For downstream namedarraytuples to work
 
 
 class AtariLstmModel(torch.nn.Module):
@@ -16,17 +16,17 @@ class AtariLstmModel(torch.nn.Module):
     """
 
     def __init__(
-            self,
-            image_shape,
-            output_size,
-            fc_sizes=512,  # Between conv and lstm.
-            lstm_size=512,
-            use_maxpool=False,
-            channels=None,  # None uses default.
-            kernel_sizes=None,
-            strides=None,
-            paddings=None,
-            ):
+        self,
+        image_shape,
+        output_size,
+        fc_sizes=512,  # Between conv and lstm.
+        lstm_size=512,
+        use_maxpool=False,
+        channels=None,  # None uses default.
+        kernel_sizes=None,
+        strides=None,
+        paddings=None,
+    ):
         """Instantiate neural net module according to inputs."""
         super().__init__()
         self.conv = Conv2dHeadModel(
@@ -52,19 +52,22 @@ class AtariLstmModel(torch.nn.Module):
         storage and transfer).  Recurrent layers processed as [T,B,H]. Used in
         both sampler and in algorithm (both via the agent).  Also returns the
         next RNN state.
-        """        
+        """
         img = image.type(torch.float)  # Expect torch.uint8 inputs
-        img = img.mul_(1. / 255)  # From [0-255] to [0-1], in place.
+        img = img.mul_(1.0 / 255)  # From [0-255] to [0-1], in place.
 
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
         lead_dim, T, B, img_shape = infer_leading_dims(img, 3)
 
         fc_out = self.conv(img.view(T * B, *img_shape))
-        lstm_input = torch.cat([
-            fc_out.view(T, B, -1),
-            prev_action.view(T, B, -1),  # Assumed onehot.
-            prev_reward.view(T, B, 1),
-            ], dim=2)
+        lstm_input = torch.cat(
+            [
+                fc_out.view(T, B, -1),
+                prev_action.view(T, B, -1),  # Assumed onehot.
+                prev_reward.view(T, B, 1),
+            ],
+            dim=2,
+        )
         init_rnn_state = None if init_rnn_state is None else tuple(init_rnn_state)
         lstm_out, (hn, cn) = self.lstm(lstm_input, init_rnn_state)
         pi = F.softmax(self.pi(lstm_out.view(T * B, -1)), dim=-1)

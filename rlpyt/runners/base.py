@@ -1,4 +1,3 @@
-
 class BaseRunner:
     """
     Orchestrates sampler and algorithm to run the training loop.  The runner

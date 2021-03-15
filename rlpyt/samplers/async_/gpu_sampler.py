@@ -1,20 +1,20 @@
-
-import torch
-import multiprocessing as mp
 import ctypes
+import multiprocessing as mp
+
 import psutil
+import torch
 
 from rlpyt.agents.base import AgentInputs
-from rlpyt.samplers.async_.base import AsyncParallelSamplerMixin
-from rlpyt.samplers.parallel.base import ParallelSamplerBase
-from rlpyt.samplers.parallel.gpu.sampler import GpuSamplerBase, build_step_buffer
-from rlpyt.samplers.async_.collectors import DbGpuResetCollector
-from rlpyt.samplers.parallel.gpu.collectors import GpuEvalCollector
 from rlpyt.samplers.async_.action_server import AsyncActionServer
+from rlpyt.samplers.async_.base import AsyncParallelSamplerMixin
+from rlpyt.samplers.async_.collectors import DbGpuResetCollector
+from rlpyt.samplers.parallel.base import ParallelSamplerBase
+from rlpyt.samplers.parallel.gpu.collectors import GpuEvalCollector
+from rlpyt.samplers.parallel.gpu.sampler import GpuSamplerBase, build_step_buffer
 from rlpyt.samplers.parallel.worker import sampling_process
+from rlpyt.utils.collections import AttrDict
 from rlpyt.utils.logging import logger
 from rlpyt.utils.seed import make_seed
-from rlpyt.utils.collections import AttrDict
 
 
 class AsyncGpuSamplerBase(AsyncParallelSamplerMixin, ParallelSamplerBase):
@@ -27,10 +27,19 @@ class AsyncGpuSamplerBase(AsyncParallelSamplerMixin, ParallelSamplerBase):
     comments in the code (easier way to pass arguments along).
     """
 
-    def __init__(self, *args, CollectorCls=DbGpuResetCollector,
-            eval_CollectorCls=GpuEvalCollector, **kwargs):
-        super().__init__(*args, CollectorCls=CollectorCls,
-            eval_CollectorCls=eval_CollectorCls, **kwargs)
+    def __init__(
+        self,
+        *args,
+        CollectorCls=DbGpuResetCollector,
+        eval_CollectorCls=GpuEvalCollector,
+        **kwargs,
+    ):
+        super().__init__(
+            *args,
+            CollectorCls=CollectorCls,
+            eval_CollectorCls=eval_CollectorCls,
+            **kwargs,
+        )
 
     ##########################################
     # In forked sampler runner process.
@@ -56,11 +65,13 @@ class AsyncGpuSamplerBase(AsyncParallelSamplerMixin, ParallelSamplerBase):
 
         self._build_parallel_ctrl(n_server, n_worker)
 
-        servers_kwargs = self._assemble_servers_kwargs(affinity, self.seed,
-            n_envs_lists)
-        servers = [mp.Process(target=self.action_server_process,
-            kwargs=s_kwargs)
-            for s_kwargs in servers_kwargs]
+        servers_kwargs = self._assemble_servers_kwargs(
+            affinity, self.seed, n_envs_lists
+        )
+        servers = [
+            mp.Process(target=self.action_server_process, kwargs=s_kwargs)
+            for s_kwargs in servers_kwargs
+        ]
         for s in servers:
             s.start()
         self.servers = servers
@@ -79,13 +90,16 @@ class AsyncGpuSamplerBase(AsyncParallelSamplerMixin, ParallelSamplerBase):
         n_server = len(affinity)
         n_workers = [len(aff["workers_cpus"]) for aff in affinity]
         if B < n_server:
-            raise ValueError(f"Request fewer envs ({B}) than action servers "
-                f"({n_server}).")
+            raise ValueError(
+                f"Request fewer envs ({B}) than action servers " f"({n_server})."
+            )
         server_Bs = [B // n_server] * n_server
         if n_workers.count(n_workers[0]) != len(n_workers):
-            logger.log("WARNING: affinity requested different number of "
+            logger.log(
+                "WARNING: affinity requested different number of "
                 "environment workers per action server, but environments "
-                "will be assigned equally across action servers anyway.")
+                "will be assigned equally across action servers anyway."
+            )
         if B % n_server > 0:
             for s in range(B % n_server):
                 server_Bs[s] += 1  # Spread across action servers.
@@ -110,8 +124,9 @@ class AsyncGpuSamplerBase(AsyncParallelSamplerMixin, ParallelSamplerBase):
             server_kwargs = dict(
                 rank=rank,
                 env_ranks=list(range(i_env, i_env + n_env)),
-                double_buffer_slice=tuple(buf[:, slice_B]
-                    for buf in self.double_buffer),
+                double_buffer_slice=tuple(
+                    buf[:, slice_B] for buf in self.double_buffer
+                ),
                 affinity=affinity[rank],
                 n_envs_list=n_envs_lists[rank],
                 seed=seed + i_worker,
@@ -125,8 +140,9 @@ class AsyncGpuSamplerBase(AsyncParallelSamplerMixin, ParallelSamplerBase):
     # In action server processes (forked again).
     ############################################
 
-    def action_server_process(self, rank, env_ranks, double_buffer_slice,
-            affinity, seed, n_envs_list):
+    def action_server_process(
+        self, rank, env_ranks, double_buffer_slice, affinity, seed, n_envs_list
+    ):
         """Target method used for forking action-server process(es) from the
         main sampler process.  By inheriting the sampler object from the
         sampler process, can more easily pass args to the environment worker
@@ -147,10 +163,11 @@ class AsyncGpuSamplerBase(AsyncParallelSamplerMixin, ParallelSamplerBase):
         torch.set_num_threads(1)  # Possibly needed to avoid MKL hang.
         self.launch_workers(double_buffer_slice, affinity, seed, n_envs_list)
         self.agent.to_device(cuda_idx=affinity["cuda_idx"])
-        self.agent.collector_initialize(global_B=self.batch_spec.B,  # Not updated.
-            env_ranks=env_ranks)  # For vector eps-greedy.
+        self.agent.collector_initialize(
+            global_B=self.batch_spec.B, env_ranks=env_ranks  # Not updated.
+        )  # For vector eps-greedy.
         self.ctrl.barrier_out.wait()  # Wait for workers to decorrelate envs.
-        
+
         while True:
             self.sync.stop_eval.value = False  # Reset.
             self.ctrl.barrier_in.wait()
@@ -165,8 +182,9 @@ class AsyncGpuSamplerBase(AsyncParallelSamplerMixin, ParallelSamplerBase):
                 # Only for bootstrap_value:
                 self.samples_np = self.double_buffer[self.ctrl.db_idx.value]
                 if hasattr(self, "double_bootstrap_value_pair"):  # Alternating sampler.
-                    self.bootstrap_value_pair = \
-                        self.double_bootstrap_value_pair[self.ctrl.db_idx.value]
+                    self.bootstrap_value_pair = self.double_bootstrap_value_pair[
+                        self.ctrl.db_idx.value
+                    ]
                 self.serve_actions(self.ctrl.itr.value)
             self.ctrl.barrier_out.wait()
         self.shutdown_workers()
@@ -183,14 +201,19 @@ class AsyncGpuSamplerBase(AsyncParallelSamplerMixin, ParallelSamplerBase):
             db_idx=self.ctrl.db_idx,  # Copy into sync which passes to Collector.
         )
         self.step_buffer_pyt, self.step_buffer_np = build_step_buffer(
-            self.examples, sum(n_envs_list))
-        self.agent_inputs = AgentInputs(self.step_buffer_pyt.observation,
-            self.step_buffer_pyt.action, self.step_buffer_pyt.reward)
+            self.examples, sum(n_envs_list)
+        )
+        self.agent_inputs = AgentInputs(
+            self.step_buffer_pyt.observation,
+            self.step_buffer_pyt.action,
+            self.step_buffer_pyt.reward,
+        )
 
         if self.eval_n_envs > 0:
             eval_n_envs = self.eval_n_envs_per * n_worker
             eval_step_buffer_pyt, eval_step_buffer_np = build_step_buffer(
-                self.examples, eval_n_envs)
+                self.examples, eval_n_envs
+            )
             self.eval_step_buffer_pyt = eval_step_buffer_pyt
             self.eval_step_buffer_np = eval_step_buffer_np
             self.eval_agent_inputs = AgentInputs(
@@ -203,13 +226,16 @@ class AsyncGpuSamplerBase(AsyncParallelSamplerMixin, ParallelSamplerBase):
         self.double_buffer = double_buffer_slice  # Now only see my part.
         common_kwargs = self._assemble_common_kwargs(affinity)
         common_kwargs["agent"] = None  # Remove.
-        workers_kwargs = self._assemble_workers_kwargs(affinity, seed,
-            n_envs_list)
+        workers_kwargs = self._assemble_workers_kwargs(affinity, seed, n_envs_list)
 
         # Yes, fork again.
-        self.workers = [mp.Process(target=sampling_process,
-            kwargs=dict(common_kwargs=common_kwargs, worker_kwargs=w_kwargs))
-            for w_kwargs in workers_kwargs]
+        self.workers = [
+            mp.Process(
+                target=sampling_process,
+                kwargs=dict(common_kwargs=common_kwargs, worker_kwargs=w_kwargs),
+            )
+            for w_kwargs in workers_kwargs
+        ]
         for w in self.workers:
             w.start()
 
@@ -218,8 +244,7 @@ class AsyncGpuSamplerBase(AsyncParallelSamplerMixin, ParallelSamplerBase):
             w.join()  # Already signaled to quit by central master.
 
     def _assemble_workers_kwargs(self, affinity, seed, n_envs_list):
-        workers_kwargs = super()._assemble_workers_kwargs(affinity, seed,
-            n_envs_list)
+        workers_kwargs = super()._assemble_workers_kwargs(affinity, seed, n_envs_list)
         i_env = 0
         for rank, w_kwargs in enumerate(workers_kwargs):
             n_envs = n_envs_list[rank]
@@ -232,10 +257,10 @@ class AsyncGpuSamplerBase(AsyncParallelSamplerMixin, ParallelSamplerBase):
             )
             w_kwargs["step_buffer_np"] = self.step_buffer_np[slice_B]
             if self.eval_n_envs > 0:
-                eval_slice_B = slice(self.eval_n_envs_per * rank,
-                    self.eval_n_envs_per * (rank + 1))
-                w_kwargs["eval_step_buffer_np"] = \
-                    self.eval_step_buffer_np[eval_slice_B]
+                eval_slice_B = slice(
+                    self.eval_n_envs_per * rank, self.eval_n_envs_per * (rank + 1)
+                )
+                w_kwargs["eval_step_buffer_np"] = self.eval_step_buffer_np[eval_slice_B]
             i_env += n_envs
         return workers_kwargs
 

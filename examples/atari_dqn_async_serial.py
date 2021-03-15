@@ -1,4 +1,3 @@
-
 """
 Runs DQN in asynchronous mode, with separate proceses for sampling and
 optimization.  Serial sampling here.  Inputs and outputs from the affinity
@@ -6,13 +5,13 @@ constructors will be different for this mode.
 """
 
 
-from rlpyt.utils.launching.affinity import make_affinity
-from rlpyt.samplers.async_.serial_sampler import AsyncSerialSampler
-from rlpyt.samplers.async_.collectors import DbCpuResetCollector
-from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
-from rlpyt.algos.dqn.dqn import DQN
 from rlpyt.agents.dqn.atari.atari_dqn_agent import AtariDqnAgent
+from rlpyt.algos.dqn.dqn import DQN
+from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 from rlpyt.runners.async_rl import AsyncRlEval
+from rlpyt.samplers.async_.collectors import DbCpuResetCollector
+from rlpyt.samplers.async_.serial_sampler import AsyncSerialSampler
+from rlpyt.utils.launching.affinity import make_affinity
 from rlpyt.utils.logging.context import logger_context
 
 
@@ -43,11 +42,7 @@ def build_and_train(game="pong", run_ID=0):
         eval_max_steps=int(10e3),
         eval_max_trajectories=2,
     )
-    algo = DQN(
-        replay_ratio=18,
-        min_steps_learn=5e3,
-        replay_size=int(1e5)
-    )
+    algo = DQN(replay_ratio=18, min_steps_learn=5e3, replay_size=int(1e5))
     agent = AtariDqnAgent()
     runner = AsyncRlEval(
         algo=algo,
@@ -66,9 +61,14 @@ def build_and_train(game="pong", run_ID=0):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--game', help='Atari game', default='pong')
-    parser.add_argument('--run_ID', help='run identifier (logging)', type=int, default=0)
+
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument("--game", help="Atari game", default="pong")
+    parser.add_argument(
+        "--run_ID", help="run identifier (logging)", type=int, default=0
+    )
     args = parser.parse_args()
     build_and_train(
         game=args.game,

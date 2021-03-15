@@ -1,11 +1,10 @@
-
-import sys
 import copy
 import os.path as osp
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2 or len(args) == 0
@@ -36,8 +35,7 @@ batch_Bs = [512, 32]
 delta_Ts = [3, 3]
 values = list(zip(batch_Ts, batch_Bs, delta_Ts))
 dir_names = ["{}T_{}B_{}Dlta".format(*v) for v in values]
-keys = [("algo", "batch_T"), ("algo", "batch_B"),
-    ("algo", "delta_T")]
+keys = [("algo", "batch_T"), ("algo", "batch_B"), ("algo", "delta_T")]
 variant_levels.append(VariantLevel(keys, values, dir_names))
 
 rs_probs = [0.1, 1.0]
@@ -52,8 +50,9 @@ replay_base_dir = "/data/adam/ul4rl/replays/20200608/15M_VecEps_B78"
 #     "alien", "breakout", "frostbite", "gravitar",
 # ]
 games = ["breakout", "gravitar", "qbert", "space_invaders"]
-replay_filenames = [osp.join(replay_base_dir, game, "run_0/replaybuffer.pkl")
-    for game in games]
+replay_filenames = [
+    osp.join(replay_base_dir, game, "run_0/replaybuffer.pkl") for game in games
+]
 values = list(zip(replay_filenames, games))
 dir_names = games
 keys = [("algo", "replay_filepath"), ("name",)]

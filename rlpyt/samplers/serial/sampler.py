@@ -1,9 +1,8 @@
-
 from rlpyt.samplers.base import BaseSampler
 from rlpyt.samplers.buffer import build_samples_buffer
-from rlpyt.utils.logging import logger
 from rlpyt.samplers.parallel.cpu.collectors import CpuResetCollector
 from rlpyt.samplers.serial.collectors import SerialEvalCollector
+from rlpyt.utils.logging import logger
 from rlpyt.utils.seed import set_envs_seeds
 
 
@@ -16,21 +15,30 @@ class SerialSampler(BaseSampler):
     ones.
     """
 
-    def __init__(self, *args, CollectorCls=CpuResetCollector,
-            eval_CollectorCls=SerialEvalCollector, **kwargs):
-        super().__init__(*args, CollectorCls=CollectorCls,
-            eval_CollectorCls=eval_CollectorCls, **kwargs)
+    def __init__(
+        self,
+        *args,
+        CollectorCls=CpuResetCollector,
+        eval_CollectorCls=SerialEvalCollector,
+        **kwargs
+    ):
+        super().__init__(
+            *args,
+            CollectorCls=CollectorCls,
+            eval_CollectorCls=eval_CollectorCls,
+            **kwargs
+        )
 
     def initialize(
-            self,
-            agent,
-            affinity=None,
-            seed=None,
-            bootstrap_value=False,
-            traj_info_kwargs=None,
-            rank=0,
-            world_size=1,
-            ):
+        self,
+        agent,
+        affinity=None,
+        seed=None,
+        bootstrap_value=False,
+        traj_info_kwargs=None,
+        rank=0,
+        world_size=1,
+    ):
         """Store the input arguments.  Instantiate the specified number of environment
         instances (``batch_B``).  Initialize the agent, and pre-allocate a memory buffer
         to hold the samples collected in each batch.  Applies ``traj_info_kwargs`` settings
@@ -47,11 +55,18 @@ class SerialSampler(BaseSampler):
 
         global_B = B * world_size
         env_ranks = list(range(rank * B, (rank + 1) * B))
-        agent.initialize(envs[0].spaces, share_memory=False,
-            global_B=global_B, env_ranks=env_ranks)
-        samples_pyt, samples_np, examples = build_samples_buffer(agent, envs[0],
-            self.batch_spec, bootstrap_value, agent_shared=False,
-            env_shared=False, subprocess=False)
+        agent.initialize(
+            envs[0].spaces, share_memory=False, global_B=global_B, env_ranks=env_ranks
+        )
+        samples_pyt, samples_np, examples = build_samples_buffer(
+            agent,
+            envs[0],
+            self.batch_spec,
+            bootstrap_value,
+            agent_shared=False,
+            env_shared=False,
+            subprocess=False,
+        )
         if traj_info_kwargs:
             for k, v in traj_info_kwargs.items():
                 setattr(self.TrajInfoCls, "_" + k, v)  # Avoid passing at init.
@@ -66,8 +81,9 @@ class SerialSampler(BaseSampler):
             env_ranks=env_ranks,  # Might get applied redundantly to agent.
         )
         if self.eval_n_envs > 0:  # May do evaluation.
-            eval_envs = [self.EnvCls(**self.eval_env_kwargs)
-                for _ in range(self.eval_n_envs)]
+            eval_envs = [
+                self.EnvCls(**self.eval_env_kwargs) for _ in range(self.eval_n_envs)
+            ]
             set_envs_seeds(eval_envs, seed)
             eval_CollectorCls = self.eval_CollectorCls or SerialEvalCollector
             self.eval_collector = eval_CollectorCls(
@@ -78,8 +94,7 @@ class SerialSampler(BaseSampler):
                 max_trajectories=self.eval_max_trajectories,
             )
 
-        agent_inputs, traj_infos = collector.start_envs(
-            self.max_decorrelation_steps)
+        agent_inputs, traj_infos = collector.start_envs(self.max_decorrelation_steps)
         collector.start_agent()
 
         self.agent = agent
@@ -98,7 +113,8 @@ class SerialSampler(BaseSampler):
         """
         # self.samples_np[:] = 0  # Unnecessary and may take time.
         agent_inputs, traj_infos, completed_infos = self.collector.collect_batch(
-            self.agent_inputs, self.traj_infos, itr)
+            self.agent_inputs, self.traj_infos, itr
+        )
         self.collector.reset_if_needed(agent_inputs)
         self.agent_inputs = agent_inputs
         self.traj_infos = traj_infos

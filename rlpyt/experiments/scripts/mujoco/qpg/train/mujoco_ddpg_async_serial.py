@@ -1,20 +1,21 @@
-
 import sys
 
-from rlpyt.utils.launching.affinity import affinity_from_code
-# from rlpyt.samplers.cpu.parallel_sampler import CpuParallelSampler
-from rlpyt.samplers.async_.serial_sampler import AsyncSerialSampler
-# from rlpyt.samplers.cpu.collectors import ResetCollector
-from rlpyt.samplers.async_.collectors import DbCpuResetCollector
-from rlpyt.envs.gym import make as gym_make
-from rlpyt.algos.qpg.ddpg import DDPG
 from rlpyt.agents.qpg.ddpg_agent import DdpgAgent
+from rlpyt.algos.qpg.ddpg import DDPG
+from rlpyt.envs.gym import make as gym_make
+from rlpyt.experiments.configs.mujoco.qpg.mujoco_ddpg import configs
+
 # from rlpyt.runners.minibatch_rl import MinibatchRlEval
 from rlpyt.runners.async_rl import AsyncRlEval
-from rlpyt.utils.logging.context import logger_context
-from rlpyt.utils.launching.variant import load_variant, update_config
 
-from rlpyt.experiments.configs.mujoco.qpg.mujoco_ddpg import configs
+# from rlpyt.samplers.cpu.collectors import ResetCollector
+from rlpyt.samplers.async_.collectors import DbCpuResetCollector
+
+# from rlpyt.samplers.cpu.parallel_sampler import CpuParallelSampler
+from rlpyt.samplers.async_.serial_sampler import AsyncSerialSampler
+from rlpyt.utils.launching.affinity import affinity_from_code
+from rlpyt.utils.launching.variant import load_variant, update_config
+from rlpyt.utils.logging.context import logger_context
 
 
 def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
@@ -33,11 +34,7 @@ def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
     algo = DDPG(optim_kwargs=config["optim"], **config["algo"])
     agent = DdpgAgent(**config["agent"])
     runner = AsyncRlEval(
-        algo=algo,
-        agent=agent,
-        sampler=sampler,
-        affinity=affinity,
-        **config["runner"]
+        algo=algo, agent=agent, sampler=sampler, affinity=affinity, **config["runner"]
     )
     name = "async_ddpg_" + config["env"]["id"]
     with logger_context(log_dir, run_ID, name, config):

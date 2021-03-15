@@ -1,11 +1,10 @@
-
-import sys
 import copy
 import os.path as osp
+import sys
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from rlpyt.utils.launching.variant import VariantLevel, make_variants
 
 args = sys.argv[1:]
 assert len(args) == 2 or len(args) == 0
@@ -34,8 +33,14 @@ variant_levels.append(VariantLevel(keys, values, dir_names))
 
 replay_base_dir = "/data/adam/ul4rl/replays/20200608/15M_VecEps_B78"
 games = [
-    "pong", "qbert", "seaquest", "space_invaders",
-    "alien", "breakout", "frostbite", "gravitar",
+    "pong",
+    "qbert",
+    "seaquest",
+    "space_invaders",
+    "alien",
+    "breakout",
+    "frostbite",
+    "gravitar",
 ]
 # Make a round robin where one game is left out.
 replay_filenames = list()
@@ -43,8 +48,9 @@ names = list()
 for g in range(len(games)):
     sub_games = games.copy()
     holdout = sub_games.pop(g)  # remove one
-    filenames = [osp.join(replay_base_dir, game, "run_0/replaybuffer.pkl")
-        for game in sub_games]
+    filenames = [
+        osp.join(replay_base_dir, game, "run_0/replaybuffer.pkl") for game in sub_games
+    ]
     replay_filenames.append(filenames)
     names.append(holdout + "_holdout")
 values = list(zip(replay_filenames, names))

@@ -1,10 +1,9 @@
-
 import numpy as np
 import torch
 
-from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.models.mlp import MlpModel
 from rlpyt.models.running_mean_std import RunningMeanStdModel
+from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
 
 class MujocoFfModel(torch.nn.Module):
@@ -15,17 +14,17 @@ class MujocoFfModel(torch.nn.Module):
     """
 
     def __init__(
-            self,
-            observation_shape,
-            action_size,
-            hidden_sizes=None,  # None for default (see below).
-            hidden_nonlinearity=torch.nn.Tanh,  # Module form.
-            mu_nonlinearity=torch.nn.Tanh,  # Module form.
-            init_log_std=0.,
-            normalize_observation=False,
-            norm_obs_clip=10,
-            norm_obs_var_clip=1e-6,
-            ):
+        self,
+        observation_shape,
+        action_size,
+        hidden_sizes=None,  # None for default (see below).
+        hidden_nonlinearity=torch.nn.Tanh,  # Module form.
+        mu_nonlinearity=torch.nn.Tanh,  # Module form.
+        init_log_std=0.0,
+        normalize_observation=False,
+        norm_obs_clip=10,
+        norm_obs_var_clip=1e-6,
+    ):
         """Instantiate neural net modules according to inputs."""
         super().__init__()
         self._obs_ndim = len(observation_shape)
@@ -69,8 +68,11 @@ class MujocoFfModel(torch.nn.Module):
             obs_var = self.obs_rms.var
             if self.norm_obs_var_clip is not None:
                 obs_var = torch.clamp(obs_var, min=self.norm_obs_var_clip)
-            observation = torch.clamp((observation - self.obs_rms.mean) /
-                obs_var.sqrt(), -self.norm_obs_clip, self.norm_obs_clip)
+            observation = torch.clamp(
+                (observation - self.obs_rms.mean) / obs_var.sqrt(),
+                -self.norm_obs_clip,
+                self.norm_obs_clip,
+            )
 
         obs_flat = observation.view(T * B, -1)
         mu = self.mu(obs_flat)

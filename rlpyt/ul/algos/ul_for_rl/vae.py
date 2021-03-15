@@ -1,29 +1,28 @@
+from collections import namedtuple
 
 import torch
 import torch.nn.functional as F
-from collections import namedtuple
 
+from rlpyt.algos.utils import valid_from_done
+from rlpyt.distributions.categorical import Categorical
 from rlpyt.ul.algos.ul_for_rl.base import BaseUlAlgorithm
-from rlpyt.ul.models.ul.vae_models import VaeHeadModel, VaeDecoderModel
-from rlpyt.utils.quick_args import save__init__args
-from rlpyt.utils.logging import logger
+from rlpyt.ul.models.ul.encoders import EncoderModel
+from rlpyt.ul.models.ul.vae_models import VaeDecoderModel, VaeHeadModel
 from rlpyt.ul.replays.ul_for_rl_replay import UlForRlReplayBuffer
 from rlpyt.utils.buffer import buffer_to
-from rlpyt.algos.utils import valid_from_done
+from rlpyt.utils.logging import logger
+from rlpyt.utils.quick_args import save__init__args
 from rlpyt.utils.tensor import valid_mean
-from rlpyt.ul.models.ul.encoders import EncoderModel
-from rlpyt.distributions.categorical import Categorical
-
 
 # from rlpyt.ul.algos.data_augs import random_shift
 # from rlpyt.distributions.categorical import Categorical, DistInfo
 
 
 IGNORE_INDEX = -100  # Mask action samples across episode boundary.
-OptInfo = namedtuple("OptInfo", ["reconLoss", "klLoss",
-    "activationLoss", "gradNorm", "convActivation"])
-ValInfo = namedtuple("ValInfo", ["reconLoss", "klLoss",
-    "convActivation"])
+OptInfo = namedtuple(
+    "OptInfo", ["reconLoss", "klLoss", "activationLoss", "gradNorm", "convActivation"]
+)
+ValInfo = namedtuple("ValInfo", ["reconLoss", "klLoss", "convActivation"])
 
 
 class VAE(BaseUlAlgorithm):
@@ -32,31 +31,31 @@ class VAE(BaseUlAlgorithm):
     opt_info_fields = tuple(f for f in OptInfo._fields)  # copy
 
     def __init__(
-            self,
-            batch_size,
-            learning_rate,
-            replay_filepath,
-            delta_T=0,
-            OptimCls=torch.optim.Adam,
-            optim_kwargs=None,
-            initial_state_dict=None,
-            clip_grad_norm=1000.,
-            EncoderCls=EncoderModel,
-            encoder_kwargs=None,
-            latent_size=128,
-            ReplayCls=UlForRlReplayBuffer,
-            activation_loss_coefficient=0.0,
-            learning_rate_anneal=None,  # cosine
-            learning_rate_warmup=0,  # number of updates
-            VaeHeadCls=VaeHeadModel,
-            hidden_sizes=None,  # But maybe use for forward prediction
-            DecoderCls=VaeDecoderModel,
-            decoder_kwargs=None,
-            kl_coeff=1.,
-            onehot_action=True,
-            validation_split=0.0,
-            n_validation_batches=0,
-            ):
+        self,
+        batch_size,
+        learning_rate,
+        replay_filepath,
+        delta_T=0,
+        OptimCls=torch.optim.Adam,
+        optim_kwargs=None,
+        initial_state_dict=None,
+        clip_grad_norm=1000.0,
+        EncoderCls=EncoderModel,
+        encoder_kwargs=None,
+        latent_size=128,
+        ReplayCls=UlForRlReplayBuffer,
+        activation_loss_coefficient=0.0,
+        learning_rate_anneal=None,  # cosine
+        learning_rate_warmup=0,  # number of updates
+        VaeHeadCls=VaeHeadModel,
+        hidden_sizes=None,  # But maybe use for forward prediction
+        DecoderCls=VaeDecoderModel,
+        decoder_kwargs=None,
+        kl_coeff=1.0,
+        onehot_action=True,
+        validation_split=0.0,
+        n_validation_batches=0,
+    ):
         optim_kwargs = dict() if optim_kwargs is None else optim_kwargs
         encoder_kwargs = dict() if encoder_kwargs is None else encoder_kwargs
         decoder_kwargs = dict() if decoder_kwargs is None else decoder_kwargs
@@ -66,8 +65,11 @@ class VAE(BaseUlAlgorithm):
         self._replay_T = delta_T + 1
 
     def initialize(self, n_updates, cuda_idx=None):
-        self.device = torch.device("cpu") if cuda_idx is None else torch.device(
-            "cuda", index=cuda_idx)
+        self.device = (
+            torch.device("cpu")
+            if cuda_idx is None
+            else torch.device("cuda", index=cuda_idx)
+        )
 
         examples = self.load_replay()
         self.encoder = self.EncoderCls(
@@ -88,8 +90,7 @@ class VAE(BaseUlAlgorithm):
             hidden_sizes=self.hidden_sizes,
         )
         self.decoder = self.DecoderCls(
-            latent_size=self.latent_size,
-            **self.decoder_kwargs
+            latent_size=self.latent_size, **self.decoder_kwargs
         )
         self.encoder.to(self.device)
         self.vae_head.to(self.device)
@@ -111,17 +112,19 @@ class VAE(BaseUlAlgorithm):
         loss = recon_loss + kl_loss + act_loss
         loss.backward()
         if self.clip_grad_norm is None:
-            grad_norm = 0.
+            grad_norm = 0.0
         else:
             grad_norm = torch.nn.utils.clip_grad_norm_(
-                self.parameters(), self.clip_grad_norm)
+                self.parameters(), self.clip_grad_norm
+            )
         self.optimizer.step()
         opt_info.reconLoss.append(recon_loss.item())
         opt_info.klLoss.append(kl_loss.item())
         opt_info.activationLoss.append(act_loss.item())
         opt_info.gradNorm.append(grad_norm.item())
         opt_info.convActivation.append(
-            conv_output[0].detach().cpu().view(-1).numpy())  # Keep 1 full one.
+            conv_output[0].detach().cpu().view(-1).numpy()
+        )  # Keep 1 full one.
         return opt_info
 
     def vae_loss(self, samples):
@@ -137,8 +140,7 @@ class VAE(BaseUlAlgorithm):
         else:
             action = None
         observation, target_observation, action = buffer_to(
-            (observation, target_observation, action),
-            device=self.device
+            (observation, target_observation, action), device=self.device
         )
 
         h, conv_out = self.encoder(observation)
@@ -147,7 +149,7 @@ class VAE(BaseUlAlgorithm):
 
         if target_observation.dtype == torch.uint8:
             target_observation = target_observation.type(torch.float)
-            target_observation = target_observation.mul_(1 / 255.)
+            target_observation = target_observation.mul_(1 / 255.0)
 
         b, c, h, w = target_observation.shape
         recon_losses = F.binary_cross_entropy(
@@ -177,14 +179,14 @@ class VAE(BaseUlAlgorithm):
         val_info = ValInfo(*([] for _ in range(len(ValInfo._fields))))
         self.optimizer.zero_grad()
         for _ in range(self.n_validation_batches):
-            samples = self.replay_buffer.sample_batch(self.batch_size,
-                validation=True)
+            samples = self.replay_buffer.sample_batch(self.batch_size, validation=True)
             with torch.no_grad():
                 recon_loss, kl_loss, conv_output = self.vae_loss(samples)
             val_info.reconLoss.append(recon_loss.item())
             val_info.klLoss.append(kl_loss.item())
             val_info.convActivation.append(
-                conv_output[0].detach().cpu().view(-1).numpy())  # Keep 1 full one.
+                conv_output[0].detach().cpu().view(-1).numpy()
+            )  # Keep 1 full one.
         self.optimizer.zero_grad()
         logger.log("...validation loss completed.")
         return val_info

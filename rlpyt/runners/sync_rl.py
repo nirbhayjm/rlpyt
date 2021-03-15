@@ -1,14 +1,13 @@
-
 import multiprocessing as mp
 import time
+
 import torch.distributed
 
 from rlpyt.runners.minibatch_rl import MinibatchRl, MinibatchRlEval
-from rlpyt.utils.seed import make_seed
 from rlpyt.utils.collections import AttrDict
 from rlpyt.utils.quick_args import save__init__args
+from rlpyt.utils.seed import make_seed
 from rlpyt.utils.synchronize import drain_queue, find_port
-
 
 ###############################################################################
 # Master
@@ -35,7 +34,7 @@ class SyncRlMixin:
 
     The name "Sync" refers to the fact that the sampler and algorithm still
     operate synchronously within each process (i.e. they alternate, running
-    one at a time).  
+    one at a time).
 
     Note:
        Weak scaling is implemented for batch sizes.  The batch size input
@@ -44,7 +43,7 @@ class SyncRlMixin:
        The world size is readily available from ``torch.distributed``, so can
        change this if desired.
 
-    Note: 
+    Note:
        The ``affinities`` input is expected to be a list, with a seprate
        affinity dict for each process. The number of processes is taken from
        the length of the affinities list.
@@ -74,21 +73,23 @@ class SyncRlMixin:
             self.seed = make_seed()
         port = find_port(offset=self.affinity.get("master_cpus", [0])[0])
         backend = "gloo" if self.affinity.get("cuda_idx", None) is None else "nccl"
-        workers_kwargs = [dict(
-            algo=self.algo,
-            agent=self.agent,
-            sampler=self.sampler,
-            n_steps=self.n_steps,
-            seed=self.seed + 100 * rank,
-            affinity=self.affinities[rank],
-            log_interval_steps=self.log_interval_steps,
-            rank=rank,
-            world_size=world_size,
-            port=port,
-            backend=backend,
-            par=par,
+        workers_kwargs = [
+            dict(
+                algo=self.algo,
+                agent=self.agent,
+                sampler=self.sampler,
+                n_steps=self.n_steps,
+                seed=self.seed + 100 * rank,
+                affinity=self.affinities[rank],
+                log_interval_steps=self.log_interval_steps,
+                rank=rank,
+                world_size=world_size,
+                port=port,
+                backend=backend,
+                par=par,
             )
-            for rank in range(1, world_size)]
+            for rank in range(1, world_size)
+        ]
         workers = [self.WorkerCls(**w_kwargs) for w_kwargs in workers_kwargs]
         self.workers = [mp.Process(target=w.train, args=()) for w in workers]
         for w in self.workers:
@@ -146,22 +147,21 @@ class SyncRlEval(SyncRlMixin, MinibatchRlEval):
 
 
 class SyncWorkerMixin:
-
     def __init__(
-            self,
-            algo,
-            agent,
-            sampler,
-            n_steps,
-            seed,
-            affinity,
-            log_interval_steps,
-            rank,
-            world_size,
-            port,
-            backend,
-            par,
-            ):
+        self,
+        algo,
+        agent,
+        sampler,
+        n_steps,
+        seed,
+        affinity,
+        log_interval_steps,
+        rank,
+        world_size,
+        port,
+        backend,
+        par,
+    ):
         save__init__args(locals())
 
     def startup(self):
@@ -183,7 +183,6 @@ class SyncWorkerMixin:
 
 
 class SyncWorker(SyncWorkerMixin, MinibatchRl):
-
     def store_diagnostics(self, itr, traj_infos, opt_info):
         for traj_info in traj_infos:
             self.par.traj_infos_queue.put(traj_info)
@@ -194,7 +193,6 @@ class SyncWorker(SyncWorkerMixin, MinibatchRl):
 
 
 class SyncWorkerEval(SyncWorkerMixin, MinibatchRlEval):
-
     def store_diagnostics(self, *args, **kwargs):
         pass
 

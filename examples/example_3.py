@@ -1,4 +1,3 @@
-
 """
 Runs multiple instances of the Atari environment and optimizes using A2C
 algorithm. Can choose between configurations for use of CPU/GPU for sampling
@@ -9,18 +8,20 @@ is required for alternating sampling (see rlpyt.agents.base.py), feedforward age
 remain unaffected.
 
 """
-from rlpyt.samplers.serial.sampler import SerialSampler
-from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
-from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
-from rlpyt.samplers.parallel.gpu.alternating_sampler import AlternatingSampler
-from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
-from rlpyt.algos.pg.a2c import A2C
 from rlpyt.agents.pg.atari import AtariFfAgent
+from rlpyt.algos.pg.a2c import A2C
+from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 from rlpyt.runners.minibatch_rl import MinibatchRl
+from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
+from rlpyt.samplers.parallel.gpu.alternating_sampler import AlternatingSampler
+from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
+from rlpyt.samplers.serial.sampler import SerialSampler
 from rlpyt.utils.logging.context import logger_context
 
 
-def build_and_train(game="pong", run_ID=0, cuda_idx=None, sample_mode="serial", n_parallel=2):
+def build_and_train(
+    game="pong", run_ID=0, cuda_idx=None, sample_mode="serial", n_parallel=2
+):
     affinity = dict(cuda_idx=cuda_idx, workers_cpus=list(range(n_parallel)))
     gpu_cpu = "CPU" if cuda_idx is None else f"GPU {cuda_idx}"
     if sample_mode == "serial":
@@ -28,15 +29,21 @@ def build_and_train(game="pong", run_ID=0, cuda_idx=None, sample_mode="serial", 
         print(f"Using serial sampler, {gpu_cpu} for sampling and optimizing.")
     elif sample_mode == "cpu":
         Sampler = CpuSampler
-        print(f"Using CPU parallel sampler (agent in workers), {gpu_cpu} for optimizing.")
+        print(
+            f"Using CPU parallel sampler (agent in workers), {gpu_cpu} for optimizing."
+        )
     elif sample_mode == "gpu":
         Sampler = GpuSampler
-        print(f"Using GPU parallel sampler (agent in master), {gpu_cpu} for sampling and optimizing.")
+        print(
+            f"Using GPU parallel sampler (agent in master), {gpu_cpu} for sampling and optimizing."
+        )
     elif sample_mode == "alternating":
         Sampler = AlternatingSampler
         affinity["workers_cpus"] += affinity["workers_cpus"]  # (Double list)
         affinity["alternating"] = True  # Sampler will check for this.
-        print(f"Using Alternating GPU parallel sampler, {gpu_cpu} for sampling and optimizing.")
+        print(
+            f"Using Alternating GPU parallel sampler, {gpu_cpu} for sampling and optimizing."
+        )
 
     sampler = Sampler(
         EnvCls=AtariEnv,
@@ -65,13 +72,25 @@ def build_and_train(game="pong", run_ID=0, cuda_idx=None, sample_mode="serial", 
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--game', help='Atari game', default='pong')
-    parser.add_argument('--run_ID', help='run identifier (logging)', type=int, default=0)
-    parser.add_argument('--cuda_idx', help='gpu to use ', type=int, default=None)
-    parser.add_argument('--sample_mode', help='serial or parallel sampling',
-        type=str, default='serial', choices=['serial', 'cpu', 'gpu', 'alternating'])
-    parser.add_argument('--n_parallel', help='number of sampler workers', type=int, default=2)
+
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument("--game", help="Atari game", default="pong")
+    parser.add_argument(
+        "--run_ID", help="run identifier (logging)", type=int, default=0
+    )
+    parser.add_argument("--cuda_idx", help="gpu to use ", type=int, default=None)
+    parser.add_argument(
+        "--sample_mode",
+        help="serial or parallel sampling",
+        type=str,
+        default="serial",
+        choices=["serial", "cpu", "gpu", "alternating"],
+    )
+    parser.add_argument(
+        "--n_parallel", help="number of sampler workers", type=int, default=2
+    )
     args = parser.parse_args()
     build_and_train(
         game=args.game,

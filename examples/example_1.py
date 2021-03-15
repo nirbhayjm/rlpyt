@@ -1,4 +1,3 @@
-
 """
 Runs one instance of the Atari environment and optimizes using DQN algorithm.
 Can use a GPU for the agent (applies to both sample and train). No parallelism
@@ -13,11 +12,11 @@ use rlpyt.utils.logging.context.add_exp_param().
 
 """
 
-from rlpyt.samplers.serial.sampler import SerialSampler
-from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
-from rlpyt.algos.dqn.dqn import DQN
 from rlpyt.agents.dqn.atari.atari_dqn_agent import AtariDqnAgent
+from rlpyt.algos.dqn.dqn import DQN
+from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 from rlpyt.runners.minibatch_rl import MinibatchRlEval
+from rlpyt.samplers.serial.sampler import SerialSampler
 from rlpyt.utils.logging.context import logger_context
 
 
@@ -53,10 +52,15 @@ def build_and_train(game="pong", run_ID=0, cuda_idx=None):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--game', help='Atari game', default='pong')
-    parser.add_argument('--run_ID', help='run identifier (logging)', type=int, default=0)
-    parser.add_argument('--cuda_idx', help='gpu to use ', type=int, default=None)
+
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument("--game", help="Atari game", default="pong")
+    parser.add_argument(
+        "--run_ID", help="run identifier (logging)", type=int, default=0
+    )
+    parser.add_argument("--cuda_idx", help="gpu to use ", type=int, default=None)
     args = parser.parse_args()
     build_and_train(
         game=args.game,

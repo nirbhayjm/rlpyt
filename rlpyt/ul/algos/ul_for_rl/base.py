@@ -1,11 +1,11 @@
-
-import torch
 import pickle
 
-from rlpyt.utils.logging import logger
+import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
+
 from rlpyt.ul.algos.utils.warmup_scheduler import GradualWarmupScheduler
 from rlpyt.ul.algos.utils.weight_decay import add_weight_decay
+from rlpyt.utils.logging import logger
 
 
 class UlAlgorithm:
@@ -75,7 +75,7 @@ class BaseUlAlgorithm(UlAlgorithm):
 
     def optim_initialize(self, n_updates):
         self.n_updates = n_updates
-        weight_decay = self.optim_kwargs.pop("weight_decay", 0.)
+        weight_decay = self.optim_kwargs.pop("weight_decay", 0.0)
         parameters, weight_decay = add_weight_decay(
             model=self,  # has .parameters() and .named_parameters()
             weight_decay=weight_decay,
@@ -107,10 +107,10 @@ class BaseUlAlgorithm(UlAlgorithm):
 
     def activation_loss(self, conv_output):
         """Rarely if ever used this."""
-        if getattr(self, "activation_loss_coefficient", 0.) == 0.:
-            return torch.tensor(0., device=self.device)
+        if getattr(self, "activation_loss_coefficient", 0.0) == 0.0:
+            return torch.tensor(0.0, device=self.device)
         # Only penalize above 1 (conv_output is after ReLU).
-        large_x = torch.clamp(conv_output.view(-1) - 1, min=0.)
+        large_x = torch.clamp(conv_output.view(-1) - 1, min=0.0)
         # Gentle squared-magnitude loss, l2-like
         act_loss = large_x.pow(2).mean()
         return self.activation_loss_coefficient * act_loss

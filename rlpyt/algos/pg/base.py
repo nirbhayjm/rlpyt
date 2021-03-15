@@ -1,10 +1,12 @@
-
 # import torch
 from collections import namedtuple
 
 from rlpyt.algos.base import RlAlgorithm
-from rlpyt.algos.utils import (discount_return, generalized_advantage_estimation,
-    valid_from_done)
+from rlpyt.algos.utils import (
+    discount_return,
+    generalized_advantage_estimation,
+    valid_from_done,
+)
 
 # Convention: traj_info fields CamelCase, opt_info fields lowerCamelCase
 OptInfo = namedtuple("OptInfo", ["loss", "gradNorm", "entropy", "perplexity"])
@@ -21,14 +23,23 @@ class PolicyGradientAlgo(RlAlgorithm):
     bootstrap_value = True  # Tells the sampler it needs Value(State')
     opt_info_fields = tuple(f for f in OptInfo._fields)  # copy
 
-    def initialize(self, agent, n_itr, batch_spec, mid_batch_reset=False,
-            examples=None, world_size=1, rank=0):
+    def initialize(
+        self,
+        agent,
+        n_itr,
+        batch_spec,
+        mid_batch_reset=False,
+        examples=None,
+        world_size=1,
+        rank=0,
+    ):
         """
         Build the torch optimizer and store other input attributes. Params
         ``batch_spec`` and ``examples`` are unused.
         """
-        self.optimizer = self.OptimCls(agent.parameters(),
-            lr=self.learning_rate, **self.optim_kwargs)
+        self.optimizer = self.OptimCls(
+            agent.parameters(), lr=self.learning_rate, **self.optim_kwargs
+        )
         if self.initial_optim_state_dict is not None:
             self.optimizer.load_state_dict(self.initial_optim_state_dict)
         self.agent = agent
@@ -46,8 +57,12 @@ class PolicyGradientAlgo(RlAlgorithm):
         according to ``mid_batch_reset`` or for recurrent agent.  Optionally,
         normalize advantages.
         """
-        reward, done, value, bv = (samples.env.reward, samples.env.done,
-            samples.agent.agent_info.value, samples.agent.bootstrap_value)
+        reward, done, value, bv = (
+            samples.env.reward,
+            samples.env.done,
+            samples.agent.agent_info.value,
+            samples.agent.bootstrap_value,
+        )
         done = done.type(reward.dtype)
 
         if self.gae_lambda == 1:  # GAE reduces to empirical discounted.
@@ -55,7 +70,8 @@ class PolicyGradientAlgo(RlAlgorithm):
             advantage = return_ - value
         else:
             advantage, return_ = generalized_advantage_estimation(
-                reward, value, done, bv, self.discount, self.gae_lambda)
+                reward, value, done, bv, self.discount, self.gae_lambda
+            )
 
         if not self.mid_batch_reset or self.agent.recurrent:
             valid = valid_from_done(done)  # Recurrent: no reset during training.

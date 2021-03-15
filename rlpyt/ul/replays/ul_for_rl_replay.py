@@ -5,26 +5,28 @@ used to collect the samples.
 """
 import numpy as np
 
-from rlpyt.utils.buffer import torchify_buffer, buffer_func
-from rlpyt.utils.misc import extract_sequences
+from rlpyt.utils.buffer import buffer_func, torchify_buffer
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.logging import logger
+from rlpyt.utils.misc import extract_sequences
 
-SamplesFromReplay = namedarraytuple("SamplesFromReplay",
-    ["observation", "action", "reward", "done", "prev_action", "prev_reward"])
-SamplesFromReplayPC = namedarraytuple("SamplesFromReplayPC",
-    SamplesFromReplay._fields + ("pixctl_return",))
+SamplesFromReplay = namedarraytuple(
+    "SamplesFromReplay",
+    ["observation", "action", "reward", "done", "prev_action", "prev_reward"],
+)
+SamplesFromReplayPC = namedarraytuple(
+    "SamplesFromReplayPC", SamplesFromReplay._fields + ("pixctl_return",)
+)
 
 
 class UlForRlReplayBuffer:
-
     def __init__(
-            self,
-            replay_buffer,
-            replay_T=1,
-            validation_split=0.0,
-            pixel_control_buffer=None,
-        ):
+        self,
+        replay_buffer,
+        replay_T=1,
+        validation_split=0.0,
+        pixel_control_buffer=None,
+    ):
         self.load_replay(replay_buffer, pixel_control_buffer)
         self.replay_T = replay_T
         self.validation_t = int((self.T - replay_T) * (1 - validation_split))
@@ -74,10 +76,12 @@ class UlForRlReplayBuffer:
             # (can be different B, though)
         # Load from each replay for each field, concatenating along B dimension.
         self._samples = buffer_concatenate(  # main samples
-            tuple(rep.samples for rep in replay_buffers), axis=1)
+            tuple(rep.samples for rep in replay_buffers), axis=1
+        )
         if self._is_frame_buffer:
             self._samples_frames = buffer_concatenate(
-                tuple(rep.samples_frames for rep in replay_buffers), axis=1)
+                tuple(rep.samples_frames for rep in replay_buffers), axis=1
+            )
         del replay_buffers  # Otherwise would hold double memory
         self.T, self.B = self.samples.reward.shape
         # self.B = sum(rep.B for rep in replay_buffers)
@@ -85,10 +89,12 @@ class UlForRlReplayBuffer:
 
         self.pixel_control_buffer = None
         if pixel_control_buffers is not None:
-            pixctl_reward = buffer_concatenate(tuple(pcb["reward"]
-                for pcb in pixel_control_buffers), axis=1)
-            pixctl_return = buffer_concatenate(tuple(pcb["return_"]
-                for pcb in pixel_control_buffers), axis=1)
+            pixctl_reward = buffer_concatenate(
+                tuple(pcb["reward"] for pcb in pixel_control_buffers), axis=1
+            )
+            pixctl_return = buffer_concatenate(
+                tuple(pcb["return_"] for pcb in pixel_control_buffers), axis=1
+            )
             self.pixel_control_buffer = dict(
                 reward=pixctl_reward,
                 return_=pixctl_return,
@@ -105,9 +111,11 @@ class UlForRlReplayBuffer:
 
     def get_examples(self):
         """To use when initializing NN model."""
-        observation = (self.samples_frames[:self.n_frames, 0]
-            if self._is_frame_buffer else
-            self.samples.observation[0, 0])
+        observation = (
+            self.samples_frames[: self.n_frames, 0]
+            if self._is_frame_buffer
+            else self.samples.observation[0, 0]
+        )
         examples = SamplesFromReplay(
             observation=observation,
             action=self.samples.action[0, 0],
@@ -117,8 +125,9 @@ class UlForRlReplayBuffer:
             prev_reward=self.samples.reward[0, 0],
         )
         if self.pixel_control_buffer is not None:
-            examples = SamplesFromReplayPC(*examples,
-                pixctl_return=self.pixel_control_buffer["return_"][0, 0])
+            examples = SamplesFromReplayPC(
+                *examples, pixctl_return=self.pixel_control_buffer["return_"][0, 0]
+            )
         return examples
 
     def sample_batch(self, batch_B, validation=False):
@@ -140,10 +149,10 @@ class UlForRlReplayBuffer:
 
     def extract_batch(self, T_idxs, B_idxs):
         T = self.replay_T
-        all_action = buffer_func(self.samples.action, extract_sequences,
-            T_idxs - 1, B_idxs, T + 1)
-        all_reward = extract_sequences(self.samples.reward,
-            T_idxs - 1, B_idxs, T + 1)
+        all_action = buffer_func(
+            self.samples.action, extract_sequences, T_idxs - 1, B_idxs, T + 1
+        )
+        all_reward = extract_sequences(self.samples.reward, T_idxs - 1, B_idxs, T + 1)
         batch = SamplesFromReplay(
             observation=self.extract_observation(T_idxs, B_idxs),
             action=all_action[1:],
@@ -154,17 +163,17 @@ class UlForRlReplayBuffer:
         )
         if self.pixel_control_buffer is not None:
             pixctl_return = extract_sequences(
-                self.pixel_control_buffer["return_"],
-                T_idxs, B_idxs, T)
-            batch = SamplesFromReplayPC(*batch,
-                pixctl_return=pixctl_return)
+                self.pixel_control_buffer["return_"], T_idxs, B_idxs, T
+            )
+            batch = SamplesFromReplayPC(*batch, pixctl_return=pixctl_return)
         return torchify_buffer(batch)
 
     def extract_observation(self, T_idxs, B_idxs):
         T = self.replay_T
         if not self._is_frame_buffer:
-            return buffer_func(self.samples.observation,
-                extract_sequences, T_idxs, B_idxs, T)
+            return buffer_func(
+                self.samples.observation, extract_sequences, T_idxs, B_idxs, T
+            )
         frames = self.samples_frames
         observation = np.empty(
             shape=(T, len(B_idxs), self.n_frames) + frames.shape[2:],  # [T,B,C,H,W]
@@ -174,7 +183,7 @@ class UlForRlReplayBuffer:
         for i, (t, b) in enumerate(zip(T_idxs, B_idxs)):
             assert t + T <= self.T  # no wrapping allowed
             for f in range(self.n_frames):
-                observation[:, i, f] = frames[t + f:t + f + T, b]
+                observation[:, i, f] = frames[t + f : t + f + T, b]
 
             # Populate empty (zero) frames after environment done.
             assert t - fm1 >= 0  # no wrapping allowed
@@ -184,8 +193,10 @@ class UlForRlReplayBuffer:
                 where_done_t = np.where(done_fm1)[0] - fm1  # Might be negative...
                 for f in range(1, self.n_frames):
                     t_blanks = where_done_t + f  # ...might be > T...
-                    t_blanks = t_blanks[(t_blanks >= 0) & (t_blanks < T)]  # ..don't let it wrap.
-                    observation[t_blanks, i, :self.n_frames - f] = 0
+                    t_blanks = t_blanks[
+                        (t_blanks >= 0) & (t_blanks < T)
+                    ]  # ..don't let it wrap.
+                    observation[t_blanks, i, : self.n_frames - f] = 0
         return observation
 
 
@@ -195,7 +206,9 @@ def buffer_concatenate(buffers, axis=0):
         try:
             return np.concatenate(buffers, axis=axis)
         except ValueError:
-            logger.log("Had a ValueError in buffer concat, probably action dimensions that don't line up, populating with zeros.")
+            logger.log(
+                "Had a ValueError in buffer concat, probably action dimensions that don't line up, populating with zeros."
+            )
             logger.log(f"buffer shapes: {[buf.shape for buf in buffers]}")
             return np.zeros((buffers[0].shape[0], sum(buf.shape[1] for buf in buffers)))
     fields = buffers[0]._fields
@@ -204,7 +217,10 @@ def buffer_concatenate(buffers, axis=0):
         assert buf._fields == fields
     new_buf = buffers[0]
     fields = new_buf._fields
-    new_buf = new_buf._make(tuple(
-        buffer_concatenate(tuple(getattr(buf, field) for buf in buffers), axis=1)
-            for field in fields))
+    new_buf = new_buf._make(
+        tuple(
+            buffer_concatenate(tuple(getattr(buf, field) for buf in buffers), axis=1)
+            for field in fields
+        )
+    )
     return new_buf

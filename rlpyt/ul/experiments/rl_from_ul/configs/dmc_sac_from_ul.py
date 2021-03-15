@@ -1,11 +1,10 @@
-
 import copy
 
 configs = dict()
 
 config = dict(
     agent=dict(
-        action_squash=1.,
+        action_squash=1.0,
         pretrain_std=0.75,  # 0.75 gets pretty uniform actions
         load_conv=True,
         load_all=False,
@@ -58,9 +57,9 @@ config = dict(
         encoder_update_tau=0.05,
         augmentation="random_shift",  # [None, "random_shift", "subpixel_shift"]
         random_shift_pad=4,  # how much to pad on each direction (like DrQ style)
-        random_shift_prob=1.,
+        random_shift_prob=1.0,
         stop_conv_grad=False,
-        max_pixel_shift=1.,
+        max_pixel_shift=1.0,
     ),
     env=dict(
         domain_name="cheetah",
@@ -112,7 +111,7 @@ config = dict(
         kiaming_init=None,
         run_ID=0,
         log_interval_updates=None,
-    )
+    ),
 )
 
 configs["serial_radsac"] = config

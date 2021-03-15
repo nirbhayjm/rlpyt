@@ -1,4 +1,3 @@
-
 """
 Runs one experiment using multiple GPUs. In the SyncRl runner, the entire
 template of optimizer and sampler GPU and CPUs is replicated across the
@@ -15,13 +14,13 @@ so total batch size grows with the number of parallel runners.
 Try different affinity inputs to see where the jobs run on the machine.
 
 """
-from rlpyt.utils.launching.affinity import make_affinity
-from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
-from rlpyt.samplers.parallel.gpu.collectors import GpuWaitResetCollector
-from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
-from rlpyt.algos.pg.a2c import A2C
 from rlpyt.agents.pg.atari import AtariFfAgent
+from rlpyt.algos.pg.a2c import A2C
+from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 from rlpyt.runners.sync_rl import SyncRl
+from rlpyt.samplers.parallel.gpu.collectors import GpuWaitResetCollector
+from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
+from rlpyt.utils.launching.affinity import make_affinity
 from rlpyt.utils.logging.context import logger_context
 
 
@@ -67,9 +66,14 @@ def build_and_train(game="pong", run_ID=0):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--game', help='Atari game', default='pong')
-    parser.add_argument('--run_ID', help='run identifier (logging)', type=int, default=0)
+
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument("--game", help="Atari game", default="pong")
+    parser.add_argument(
+        "--run_ID", help="run identifier (logging)", type=int, default=0
+    )
     args = parser.parse_args()
     build_and_train(
         game=args.game,
